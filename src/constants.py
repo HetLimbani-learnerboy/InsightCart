@@ -63,3 +63,8 @@ ENCODER_PATH = os.path.join(
     MODEL_DIR,
     "category_encoder.pkl"
 )
+
+SCALER_PATH = os.path.join(
+    MODEL_DIR,
+    "rating_scaler.pkl"
+)

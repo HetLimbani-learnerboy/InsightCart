@@ -754,3 +754,343 @@ InsightCart/
 ├── LICENSE
 └── .gitignore
 ```
+
+--- 
+
+## Project Steps:
+
+Based on your current progress, you've completed the Machine Learning + Core MLOps pipeline for the first AI feature.
+
+✅ Phase 1: Research & Experimentation (Completed)
+Dataset selection
+EDA
+Data cleaning
+Text preprocessing
+Feature engineering
+Train-test split
+Train 7 models
+Hyperparameter tuning
+Calibrated Linear SVM
+MLflow experiment tracking
+Notebook (01_AI_Generated_Review_Detection.ipynb)
+✅ Phase 2: Project Structure (Completed)
+Project folders
+src/
+artifacts/
+config/
+utils/
+components/
+pipeline/
+✅ Phase 3: DVC (Completed)
+DVC initialized
+Dataset tracked
+Model tracking
+Local DVC storage
+✅ Phase 4: Production Code (Completed)
+src/
+│
+├── logger.py
+├── exception.py
+├── constants.py
+│
+├── utils/
+│   ├── common.py
+│   └── preprocessing.py
+│
+├── components/
+│   ├── data_ingestion.py
+│   ├── data_validation.py
+│   ├── data_transformation.py
+│   ├── model_trainer.py
+│   ├── model_evaluation.py
+│   └── model_pusher.py
+│
+└── pipeline/
+    └── review_detection_training_pipeline.py
+
+At this point, you have a production training pipeline.
+
+🚀 Phase 5: Model Serving (Next)
+
+This is the next major milestone.
+
+Step 13
+
+Create:
+
+src/pipeline/review_detection_inference_pipeline.py
+
+Purpose:
+
+User Review
+
+↓
+
+Load Model
+
+↓
+
+Load TF-IDF
+
+↓
+
+Load Category Encoder
+
+↓
+
+Clean Text
+
+↓
+
+Create Feature Vector
+
+↓
+
+Predict
+
+↓
+
+Return JSON
+
+This replaces the prediction function you wrote in the notebook.
+
+Step 14
+
+Create:
+
+app/
+│
+├── main.py
+├── schemas.py
+├── routes.py
+└── services.py
+
+Build a FastAPI backend.
+
+Example endpoints:
+
+POST /predict
+
+POST /health
+
+GET /metrics
+Step 15
+
+Move prediction logic from notebook
+
+Notebook:
+
+predict_review(...)
+
+↓
+
+Production:
+
+ReviewDetectionInferencePipeline.predict(...)
+Step 16
+
+Test API using Swagger
+
+http://localhost:8000/docs
+
+Example request
+
+{
+  "review": "Excellent battery life and premium build quality.",
+  "rating": 5,
+  "category": "Electronics_5"
+}
+
+Example response
+
+{
+  "review_type": "Human-Written Review",
+  "confidence": 94.63,
+  "reason": "The writing style resembles authentic human-written reviews."
+}
+🚀 Phase 6: Chrome Extension
+
+This is where InsightCart starts becoming your actual product.
+
+chrome-extension/
+│
+├── manifest.json
+├── background.js
+├── content.js
+├── popup.html
+├── popup.js
+├── popup.css
+├── assets/
+└── icons/
+
+Workflow
+
+Amazon Product Page
+
+↓
+
+Extract Reviews
+
+↓
+
+Call FastAPI
+
+↓
+
+Receive Prediction
+
+↓
+
+Show Extension Popup
+🚀 Phase 7: Docker
+
+Create
+
+Dockerfile
+
+docker-compose.yml
+
+Run
+
+FastAPI
+
+↓
+
+MLflow
+
+↓
+
+PostgreSQL
+
+↓
+
+Prometheus
+
+↓
+
+Grafana
+
+inside containers.
+
+🚀 Phase 8: CI/CD
+
+GitHub Actions
+
+Lint
+
+↓
+
+Unit Tests
+
+↓
+
+Build Docker
+
+↓
+
+Push Image
+
+↓
+
+(Optional) Deploy to EC2
+🚀 Phase 9: AWS
+
+Deploy
+
+EC2
+ECR
+S3 (DVC Remote)
+IAM
+CloudWatch
+🚀 Phase 10: Monitoring
+
+Integrate
+
+Prometheus
+Grafana
+
+Monitor:
+
+API latency
+Prediction count
+Error rate
+CPU
+Memory
+🚀 Phase 11: Expand InsightCart
+
+Once the review detection feature is complete, add more AI capabilities.
+
+1. Sentiment Analysis
+
+Use:
+
+cardiffnlp/twitter-roberta-base-sentiment-latest
+2. Review Summarization
+
+Use:
+
+facebook/bart-large-cnn
+3. Topic Extraction
+
+Use:
+
+BERTopic
+KeyBERT
+4. Product Recommendation
+
+Create a rule-based or ML recommendation engine.
+
+5. Trust Score
+
+Combine:
+
+Sentiment
+AI Review Detection
+Review count
+Rating
+Verified purchase ratio (if available)
+Complete InsightCart Roadmap
+Notebook (Research)
+        │
+        ▼
+DVC
+        │
+        ▼
+Production Components
+        │
+        ▼
+Training Pipeline
+        │
+        ▼
+Inference Pipeline
+        │
+        ▼
+FastAPI
+        │
+        ▼
+Chrome Extension
+        │
+        ▼
+Docker
+        │
+        ▼
+GitHub Actions
+        │
+        ▼
+AWS Deployment
+        │
+        ▼
+Prometheus + Grafana
+        │
+        ▼
+Sentiment Analysis
+        │
+        ▼
+Review Summarization
+        │
+        ▼
+Topic Extraction
+        │
+        ▼
+Product Recommendation
+My recommendation
