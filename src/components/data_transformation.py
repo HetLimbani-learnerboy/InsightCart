@@ -15,13 +15,14 @@ import pandas as pd
 from scipy.sparse import hstack
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import OneHotEncoder
+from sklearn.preprocessing import MinMaxScaler, OneHotEncoder
 
 from src.constants import (
     CATEGORY_COLUMN,
     CLEAN_TEXT_COLUMN,
     ENCODER_PATH,
     RATING_COLUMN,
+    SCALER_PATH,
     TARGET_COLUMN,
     TEXT_COLUMN,
     TFIDF_PATH,
@@ -40,6 +41,7 @@ class DataTransformationConfig:
     max_df: float = 0.90
     tfidf_path: str = TFIDF_PATH
     encoder_path: str = ENCODER_PATH
+    scaler_path: str = SCALER_PATH
 
 
 @dataclass
@@ -50,6 +52,7 @@ class DataTransformationArtifacts:
     y_test: Any
     tfidf: TfidfVectorizer
     category_encoder: OneHotEncoder
+    rating_scaler: MinMaxScaler
     transformed_dataframe: pd.DataFrame
 
 
@@ -69,7 +72,7 @@ class DataTransformation:
             logger.info("Removing Missing Values")
             transformed_df.dropna(inplace=True)
 
-            logger.info("Encoding Target Labels")
+            logger.info("Encoding Target Labels (CG -> 1, OR -> 0)")
             transformed_df[TARGET_COLUMN] = transformed_df[TARGET_COLUMN].map(
                 {"CG": 1, "OR": 0}
             )
@@ -79,7 +82,7 @@ class DataTransformation:
                 TEXT_COLUMN
             ].apply(clean_text)
 
-            logger.info("Performing Train-Test Split prior to Feature Scaling")
+            logger.info("Performing Train-Test Split")
             train_df, test_df = train_test_split(
                 transformed_df,
                 test_size=0.20,
@@ -95,18 +98,10 @@ class DataTransformation:
                 max_df=self.config.max_df,
             )
 
-            # Fit on training set, transform on both train and test sets to avoid data leakage
             review_features_train = tfidf.fit_transform(
                 train_df[CLEAN_TEXT_COLUMN]
             )
             review_features_test = tfidf.transform(test_df[CLEAN_TEXT_COLUMN])
-
-            logger.info(
-                f"Train Review Feature Shape : {review_features_train.shape}"
-            )
-            logger.info(
-                f"Test Review Feature Shape  : {review_features_test.shape}"
-            )
 
             save_object(self.config.tfidf_path, tfidf)
             logger.info("TF-IDF Vectorizer Saved Successfully")
@@ -121,19 +116,18 @@ class DataTransformation:
                 test_df[[CATEGORY_COLUMN]]
             )
 
-            logger.info(
-                f"Train Category Feature Shape : {category_features_train.shape}"
-            )
-            logger.info(
-                f"Test Category Feature Shape  : {category_features_test.shape}"
-            )
-
             save_object(self.config.encoder_path, encoder)
             logger.info("Category Encoder Saved Successfully")
 
-            logger.info("Preparing Rating Features")
-            rating_features_train = train_df[[RATING_COLUMN]].values
-            rating_features_test = test_df[[RATING_COLUMN]].values
+            logger.info("Scaling Rating Feature (0 to 1)")
+            scaler = MinMaxScaler()
+            rating_features_train = scaler.fit_transform(
+                train_df[[RATING_COLUMN]]
+            )
+            rating_features_test = scaler.transform(test_df[[RATING_COLUMN]])
+
+            save_object(self.config.scaler_path, scaler)
+            logger.info("Rating Scaler Saved Successfully")
 
             logger.info("Combining All Features")
             X_train = hstack(
@@ -155,7 +149,6 @@ class DataTransformation:
             y_train = train_df[TARGET_COLUMN]
             y_test = test_df[TARGET_COLUMN]
 
-            logger.info("Feature Engineering Completed Successfully")
             logger.info(f"Training Feature Matrix Shape : {X_train.shape}")
             logger.info(f"Testing Feature Matrix Shape  : {X_test.shape}")
 
@@ -166,6 +159,7 @@ class DataTransformation:
                 y_test=y_test,
                 tfidf=tfidf,
                 category_encoder=encoder,
+                rating_scaler=scaler,
                 transformed_dataframe=transformed_df,
             )
 

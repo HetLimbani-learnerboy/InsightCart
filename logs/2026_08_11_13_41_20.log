@@ -1,0 +1,37 @@
+[ 2026-08-11 13:41:22,030 ] INFO | InsightCart | Loading Inference Artifacts
+[ 2026-08-11 13:41:22,031 ] INFO | InsightCart | Loading Object : artifacts/models/best_linear_svm_calibrated.pkl
+[ 2026-08-11 13:41:22,039 ] INFO | InsightCart | Loading Object : artifacts/models/tfidf_vectorizer.pkl
+[ 2026-08-11 13:41:22,059 ] INFO | InsightCart | Loading Object : artifacts/models/category_encoder.pkl
+[ 2026-08-11 13:41:22,059 ] INFO | InsightCart | Inference Artifacts Loaded Successfully
+[ 2026-08-11 13:41:22,059 ] INFO | InsightCart | Starting Prediction Process
+[ 2026-08-11 13:41:22,848 ] INFO | InsightCart | Generating TF-IDF Features
+[ 2026-08-11 13:41:22,849 ] INFO | InsightCart | Encoding Product Category
+[ 2026-08-11 13:41:22,851 ] INFO | InsightCart | Prediction Completed Successfully
+[ 2026-08-11 13:41:22,851 ] INFO | InsightCart | Starting Prediction Process
+[ 2026-08-11 13:41:22,852 ] INFO | InsightCart | Generating TF-IDF Features
+[ 2026-08-11 13:41:22,852 ] INFO | InsightCart | Encoding Product Category
+[ 2026-08-11 13:41:22,854 ] INFO | InsightCart | Prediction Completed Successfully
+[ 2026-08-11 13:41:22,854 ] INFO | InsightCart | Starting Prediction Process
+[ 2026-08-11 13:41:22,854 ] INFO | InsightCart | Generating TF-IDF Features
+[ 2026-08-11 13:41:22,854 ] INFO | InsightCart | Encoding Product Category
+[ 2026-08-11 13:41:22,856 ] INFO | InsightCart | Prediction Completed Successfully
+[ 2026-08-11 13:41:22,856 ] INFO | InsightCart | Starting Prediction Process
+[ 2026-08-11 13:41:22,856 ] INFO | InsightCart | Generating TF-IDF Features
+[ 2026-08-11 13:41:22,856 ] INFO | InsightCart | Encoding Product Category
+[ 2026-08-11 13:41:22,858 ] INFO | InsightCart | Prediction Completed Successfully
+[ 2026-08-11 13:41:22,858 ] INFO | InsightCart | Starting Prediction Process
+[ 2026-08-11 13:41:22,858 ] INFO | InsightCart | Generating TF-IDF Features
+[ 2026-08-11 13:41:22,858 ] INFO | InsightCart | Encoding Product Category
+[ 2026-08-11 13:41:22,860 ] INFO | InsightCart | Prediction Completed Successfully
+[ 2026-08-11 13:41:22,860 ] INFO | InsightCart | Starting Prediction Process
+[ 2026-08-11 13:41:22,861 ] INFO | InsightCart | Generating TF-IDF Features
+[ 2026-08-11 13:41:22,861 ] INFO | InsightCart | Encoding Product Category
+[ 2026-08-11 13:41:22,863 ] INFO | InsightCart | Prediction Completed Successfully
+[ 2026-08-11 13:41:22,863 ] INFO | InsightCart | Starting Prediction Process
+[ 2026-08-11 13:41:22,863 ] INFO | InsightCart | Generating TF-IDF Features
+[ 2026-08-11 13:41:22,863 ] INFO | InsightCart | Encoding Product Category
+[ 2026-08-11 13:41:22,865 ] INFO | InsightCart | Prediction Completed Successfully
+[ 2026-08-11 13:41:22,865 ] INFO | InsightCart | Starting Prediction Process
+[ 2026-08-11 13:41:22,865 ] INFO | InsightCart | Generating TF-IDF Features
+[ 2026-08-11 13:41:22,865 ] INFO | InsightCart | Encoding Product Category
+[ 2026-08-11 13:41:22,867 ] INFO | InsightCart | Prediction Completed Successfully

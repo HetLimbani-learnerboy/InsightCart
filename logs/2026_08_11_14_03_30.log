@@ -1,0 +1,31 @@
+[ 2026-08-11 14:03:31,550 ] INFO | InsightCart | Loading Inference Artifacts
+[ 2026-08-11 14:03:31,551 ] INFO | InsightCart | Loading Object : artifacts/models/best_linear_svm_calibrated.pkl
+[ 2026-08-11 14:03:31,560 ] INFO | InsightCart | Loading Object : artifacts/models/tfidf_vectorizer.pkl
+[ 2026-08-11 14:03:31,581 ] INFO | InsightCart | Loading Object : artifacts/models/category_encoder.pkl
+[ 2026-08-11 14:03:31,581 ] INFO | InsightCart | Loading Object : artifacts/models/rating_scaler.pkl
+[ 2026-08-11 14:03:31,581 ] INFO | InsightCart | Inference Artifacts Loaded Successfully
+[ 2026-08-11 14:03:31,581 ] INFO | InsightCart | Starting Prediction Process
+[ 2026-08-11 14:03:32,361 ] INFO | InsightCart | Generating TF-IDF Features
+[ 2026-08-11 14:03:32,362 ] INFO | InsightCart | Encoding Product Category
+[ 2026-08-11 14:03:32,363 ] INFO | InsightCart | Scaling Rating Feature
+[ 2026-08-11 14:03:32,365 ] INFO | InsightCart | Prediction Completed Successfully
+[ 2026-08-11 14:03:32,365 ] INFO | InsightCart | Starting Prediction Process
+[ 2026-08-11 14:03:32,365 ] INFO | InsightCart | Generating TF-IDF Features
+[ 2026-08-11 14:03:32,365 ] INFO | InsightCart | Encoding Product Category
+[ 2026-08-11 14:03:32,366 ] INFO | InsightCart | Scaling Rating Feature
+[ 2026-08-11 14:03:32,368 ] INFO | InsightCart | Prediction Completed Successfully
+[ 2026-08-11 14:03:32,368 ] INFO | InsightCart | Starting Prediction Process
+[ 2026-08-11 14:03:32,368 ] INFO | InsightCart | Generating TF-IDF Features
+[ 2026-08-11 14:03:32,368 ] INFO | InsightCart | Encoding Product Category
+[ 2026-08-11 14:03:32,368 ] INFO | InsightCart | Scaling Rating Feature
+[ 2026-08-11 14:03:32,370 ] INFO | InsightCart | Prediction Completed Successfully
+[ 2026-08-11 14:03:32,370 ] INFO | InsightCart | Starting Prediction Process
+[ 2026-08-11 14:03:32,370 ] INFO | InsightCart | Generating TF-IDF Features
+[ 2026-08-11 14:03:32,370 ] INFO | InsightCart | Encoding Product Category
+[ 2026-08-11 14:03:32,370 ] INFO | InsightCart | Scaling Rating Feature
+[ 2026-08-11 14:03:32,373 ] INFO | InsightCart | Prediction Completed Successfully
+[ 2026-08-11 14:03:32,373 ] INFO | InsightCart | Starting Prediction Process
+[ 2026-08-11 14:03:32,373 ] INFO | InsightCart | Generating TF-IDF Features
+[ 2026-08-11 14:03:32,373 ] INFO | InsightCart | Encoding Product Category
+[ 2026-08-11 14:03:32,373 ] INFO | InsightCart | Scaling Rating Feature
+[ 2026-08-11 14:03:32,375 ] INFO | InsightCart | Prediction Completed Successfully
