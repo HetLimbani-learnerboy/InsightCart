@@ -1,0 +1,5 @@
+outs:
+- md5: e39be8a89f5c22cd1e9b27b34e46bccb
+  size: 483733
+  hash: md5
+  path: best_linear_svm_calibrated.pkl
