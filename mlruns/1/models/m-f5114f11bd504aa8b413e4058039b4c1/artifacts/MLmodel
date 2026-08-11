@@ -1,0 +1,25 @@
+artifact_path: /Users/hetlimbani/Desktop/Self_Learning/InsightCart/mlruns/1/models/m-f5114f11bd504aa8b413e4058039b4c1/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.skops
+    predict_fn: predict
+    python_version: 3.13.5
+  sklearn:
+    code: null
+    pickled_model: model.skops
+    serialization_format: skops
+    sklearn_version: 1.8.0
+    skops_trusted_types:
+    - sklearn.calibration._CalibratedClassifier
+    - sklearn.calibration._SigmoidCalibration
+mlflow_version: 3.15.1
+model_id: m-f5114f11bd504aa8b413e4058039b4c1
+model_size_bytes: 582932
+model_uuid: m-f5114f11bd504aa8b413e4058039b4c1
+prompts: null
+run_id: 1ab07b85ffc743619b6f4b33e17a6a7f
+utc_time_created: '2026-08-11 06:18:03.792183'

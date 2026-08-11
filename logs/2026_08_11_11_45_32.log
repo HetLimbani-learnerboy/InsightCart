@@ -1,0 +1,23 @@
+[ 2026-08-11 11:45:34,933 ] INFO | InsightCart | Training Pipeline Started
+[ 2026-08-11 11:45:34,933 ] INFO | InsightCart | Data Ingestion Started
+[ 2026-08-11 11:45:35,016 ] INFO | InsightCart | Dataset Loaded Successfully
+[ 2026-08-11 11:45:35,016 ] INFO | InsightCart | Dataset Shape : (40432, 4)
+[ 2026-08-11 11:45:35,016 ] INFO | InsightCart | Dataset Validation Started
+[ 2026-08-11 11:45:35,017 ] INFO | InsightCart | All Required Columns Found
+[ 2026-08-11 11:45:35,017 ] INFO | InsightCart | Checking Missing Values
+[ 2026-08-11 11:45:35,019 ] INFO | InsightCart | 
+category    0
+rating      0
+label       0
+text_       0
+dtype: int64
+[ 2026-08-11 11:45:35,019 ] INFO | InsightCart | Checking Duplicate Records
+[ 2026-08-11 11:45:35,052 ] INFO | InsightCart | Duplicate Rows : 12
+[ 2026-08-11 11:45:35,052 ] INFO | InsightCart | Checking Target Labels
+[ 2026-08-11 11:45:35,052 ] INFO | InsightCart | Labels : ['CG' 'OR']
+[ 2026-08-11 11:45:35,052 ] INFO | InsightCart | Dataset Validation Completed
+[ 2026-08-11 11:45:35,052 ] INFO | InsightCart | Data Transformation Started
+[ 2026-08-11 11:45:35,053 ] INFO | InsightCart | Removing Missing Values
+[ 2026-08-11 11:45:35,055 ] INFO | InsightCart | Encoding Target Labels
+[ 2026-08-11 11:45:35,057 ] INFO | InsightCart | Cleaning Review Text
+[ 2026-08-11 11:45:35,057 ] ERROR | InsightCart | Data Transformation Failed

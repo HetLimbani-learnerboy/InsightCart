@@ -1,0 +1,91 @@
+[ 2026-08-11 11:50:20,462 ] INFO | InsightCart | Training Pipeline Started
+[ 2026-08-11 11:50:20,462 ] INFO | InsightCart | Data Ingestion Started
+[ 2026-08-11 11:50:20,550 ] INFO | InsightCart | Dataset Loaded Successfully
+[ 2026-08-11 11:50:20,550 ] INFO | InsightCart | Dataset Shape : (40432, 4)
+[ 2026-08-11 11:50:20,550 ] INFO | InsightCart | Dataset Validation Started
+[ 2026-08-11 11:50:20,551 ] INFO | InsightCart | All Required Columns Found
+[ 2026-08-11 11:50:20,551 ] INFO | InsightCart | Checking Missing Values
+[ 2026-08-11 11:50:20,553 ] INFO | InsightCart | 
+category    0
+rating      0
+label       0
+text_       0
+dtype: int64
+[ 2026-08-11 11:50:20,553 ] INFO | InsightCart | Checking Duplicate Records
+[ 2026-08-11 11:50:20,585 ] INFO | InsightCart | Duplicate Rows : 12
+[ 2026-08-11 11:50:20,585 ] INFO | InsightCart | Checking Target Labels
+[ 2026-08-11 11:50:20,586 ] INFO | InsightCart | Labels : ['CG' 'OR']
+[ 2026-08-11 11:50:20,586 ] INFO | InsightCart | Dataset Validation Completed
+[ 2026-08-11 11:50:20,586 ] INFO | InsightCart | Data Transformation Started
+[ 2026-08-11 11:50:20,586 ] INFO | InsightCart | Removing Missing Values
+[ 2026-08-11 11:50:20,588 ] INFO | InsightCart | Encoding Target Labels
+[ 2026-08-11 11:50:20,590 ] INFO | InsightCart | Cleaning Review Text
+[ 2026-08-11 11:50:28,820 ] INFO | InsightCart | Performing Train-Test Split prior to Feature Scaling
+[ 2026-08-11 11:50:28,829 ] INFO | InsightCart | Generating TF-IDF Features
+[ 2026-08-11 11:50:30,041 ] INFO | InsightCart | Train Review Feature Shape : (32345, 10000)
+[ 2026-08-11 11:50:30,041 ] INFO | InsightCart | Test Review Feature Shape  : (8087, 10000)
+[ 2026-08-11 11:50:30,088 ] INFO | InsightCart | Object Saved : artifacts/models/tfidf_vectorizer.pkl
+[ 2026-08-11 11:50:30,088 ] INFO | InsightCart | TF-IDF Vectorizer Saved Successfully
+[ 2026-08-11 11:50:30,088 ] INFO | InsightCart | Encoding Product Categories
+[ 2026-08-11 11:50:30,091 ] INFO | InsightCart | Train Category Feature Shape : (32345, 10)
+[ 2026-08-11 11:50:30,091 ] INFO | InsightCart | Test Category Feature Shape  : (8087, 10)
+[ 2026-08-11 11:50:30,092 ] INFO | InsightCart | Object Saved : artifacts/models/category_encoder.pkl
+[ 2026-08-11 11:50:30,092 ] INFO | InsightCart | Category Encoder Saved Successfully
+[ 2026-08-11 11:50:30,092 ] INFO | InsightCart | Preparing Rating Features
+[ 2026-08-11 11:50:30,092 ] INFO | InsightCart | Combining All Features
+[ 2026-08-11 11:50:30,096 ] INFO | InsightCart | Feature Engineering Completed Successfully
+[ 2026-08-11 11:50:30,096 ] INFO | InsightCart | Training Feature Matrix Shape : (32345, 10011)
+[ 2026-08-11 11:50:30,096 ] INFO | InsightCart | Testing Feature Matrix Shape  : (8087, 10011)
+[ 2026-08-11 11:50:30,097 ] INFO | InsightCart | Model Trainer Initialized
+[ 2026-08-11 11:50:30,097 ] INFO | InsightCart | Model Training Started
+[ 2026-08-11 11:50:30,097 ] INFO | InsightCart | Total Models to Evaluate: 7
+[ 2026-08-11 11:50:30,097 ] INFO | InsightCart | Training Baseline: Logistic Regression
+[ 2026-08-11 11:50:30,467 ] INFO | InsightCart | Training Baseline: Multinomial Naive Bayes
+[ 2026-08-11 11:50:30,501 ] INFO | InsightCart | Training Baseline: Decision Tree
+[ 2026-08-11 11:50:34,862 ] INFO | InsightCart | Training Baseline: Random Forest
+[ 2026-08-11 11:50:39,393 ] INFO | InsightCart | Training Baseline: Linear SVM
+[ 2026-08-11 11:50:39,625 ] INFO | InsightCart | Training Baseline: XGBoost
+[ 2026-08-11 11:50:45,020 ] INFO | InsightCart | Training Baseline: LightGBM
+[ 2026-08-11 11:50:47,522 ] INFO | InsightCart | 
+Baseline Models Evaluation:
+                     Model  Accuracy  Precision    Recall  F1 Score   ROC AUC  Training Time  Prediction Time
+0               Linear SVM  0.901941   0.901037  0.903042  0.902038  0.969194       0.223578         0.001759
+1      Logistic Regression  0.896253   0.898706  0.893149  0.895919  0.964763       0.361476         0.001582
+2  Multinomial Naive Bayes  0.876963   0.884460  0.867178  0.875734  0.953175       0.024091         0.002242
+3            Random Forest  0.868307   0.882973  0.849122  0.865717  0.941491       4.352782         0.082364
+4                 LightGBM  0.857920   0.874095  0.836260  0.854759  0.941850       2.431403         0.032684
+5                  XGBoost  0.852850   0.873136  0.825625  0.848716  0.933981       5.375512         0.007377
+6            Decision Tree  0.752071   0.749144  0.757853  0.753474  0.752072       4.347644         0.004793
+[ 2026-08-11 11:50:47,525 ] INFO | InsightCart | Best Baseline Model Selected: Linear SVM
+[ 2026-08-11 11:50:47,525 ] INFO | InsightCart | Starting Hyperparameter Tuning for Linear SVM
+[ 2026-08-11 11:50:56,837 ] INFO | InsightCart | Grid Search Completed
+[ 2026-08-11 11:50:56,838 ] INFO | InsightCart | Best Hyperparameters: {'C': 1, 'loss': 'hinge'}
+[ 2026-08-11 11:50:56,838 ] INFO | InsightCart | Starting Model Calibration
+[ 2026-08-11 11:51:01,344 ] INFO | InsightCart | Model Calibration Completed
+[ 2026-08-11 11:51:01,344 ] INFO | InsightCart | Model Training Completed Successfully
+[ 2026-08-11 11:51:01,344 ] INFO | InsightCart | Model Evaluation Started
+[ 2026-08-11 11:51:01,344 ] INFO | InsightCart | Generating Predictions on Test Dataset
+[ 2026-08-11 11:51:01,365 ] INFO | InsightCart | Evaluation Metrics: {'Accuracy': 0.9020650426610609, 'Precision': 0.9022519178421183, 'Recall': 0.9018055899084838, 'F1 Score': 0.9020286986640277, 'ROC AUC': 0.9695618172890683}
+[ 2026-08-11 11:51:01,369 ] INFO | InsightCart | 
+Classification Report:
+              precision    recall  f1-score   support
+
+           0       0.90      0.90      0.90      4044
+           1       0.90      0.90      0.90      4043
+
+    accuracy                           0.90      8087
+   macro avg       0.90      0.90      0.90      8087
+weighted avg       0.90      0.90      0.90      8087
+
+[ 2026-08-11 11:51:01,369 ] INFO | InsightCart | 
+Confusion Matrix:
+[[3649  395]
+ [ 397 3646]]
+[ 2026-08-11 11:51:01,370 ] INFO | InsightCart | Logging Evaluation Results to MLflow
+[ 2026-08-11 11:51:08,535 ] INFO | InsightCart | MLflow Experiment Logging Completed
+[ 2026-08-11 11:51:08,535 ] INFO | InsightCart | Model Evaluation Completed Successfully
+[ 2026-08-11 11:51:08,535 ] INFO | InsightCart | Saving Trained Model
+[ 2026-08-11 11:51:08,537 ] INFO | InsightCart | Object Saved : artifacts/models/best_linear_svm_calibrated.pkl
+[ 2026-08-11 11:51:08,537 ] INFO | InsightCart | Model Saved Successfully : artifacts/models/best_linear_svm_calibrated.pkl
+[ 2026-08-11 11:51:08,537 ] INFO | InsightCart | Pipeline Completed Successfully
+[ 2026-08-11 11:51:08,537 ] INFO | InsightCart | Model Saved At : artifacts/models/best_linear_svm_calibrated.pkl

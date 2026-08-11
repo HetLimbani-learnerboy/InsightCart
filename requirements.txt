@@ -1,0 +1,4 @@
+contractions
+emoji
+beautifulsoup4
+nltk
