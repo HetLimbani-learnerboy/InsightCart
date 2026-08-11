@@ -1,0 +1,3 @@
+"""
+InsightCart FastAPI Application
+"""

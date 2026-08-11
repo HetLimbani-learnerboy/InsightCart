@@ -1,3 +1,7 @@
 dvc_storage/
 mlflow/
 mlruns/
+
+app/__pycache__/
+
+logs/
