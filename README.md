@@ -654,18 +654,12 @@ i want to make this project so first give dataset to implement train model machi
 ```
 InsightCart/
 │
-├── notebooks/
-│   └── 01_AI_Generated_Review_Detection.ipynb
-│
-├── data/
-│   ├── raw/
-│   │   └── fake_reviews_dataset.csv
-│   │
-│   ├── processed/
-│   │   ├── clean_dataset.csv
-│   │   └── preprocessed_dataset.csv
-│   │
-│   └── external/
+├── app/
+│   ├── main.py
+│   ├── routes.py
+│   ├── schemas.py
+│   ├── models.py
+│   └── __init__.py
 │
 ├── artifacts/
 │   ├── models/
@@ -683,9 +677,41 @@ InsightCart/
 │       ├── f1_comparison.png
 │       └── roc_auc_comparison.png
 │
-├── mlruns/
+├── chrome_extension/
+│   ├── manifest.json
+│   ├── popup/
+│   ├── background/
+│   ├── content/
+│   ├── assets/
+│   └── icons/
+│
+├── config/
+│   ├── config.yaml
+│   ├── params.yaml
+│   └── schema.yaml
+│
+├── data/
+│   ├── raw/
+│   │   └── fake_reviews_dataset.csv
+│   │
+│   ├── processed/
+│   │   ├── clean_dataset.csv
+│   │   └── preprocessed_dataset.csv
+│   │
+│   └── external/
+│
+├── docs/
+│   ├── architecture.png
+│   ├── workflow.png
+│   └── screenshots/
+│
+├── logs/
+│
+├── notebooks/
+│   └── 01_AI_Generated_Review_Detection.ipynb
 │
 ├── src/
+│   │
 │   ├── components/
 │   │   ├── data_ingestion.py
 │   │   ├── data_validation.py
@@ -695,50 +721,36 @@ InsightCart/
 │   │   └── model_pusher.py
 │   │
 │   ├── pipeline/
-│   │   ├── training_pipeline.py
-│   │   └── prediction_pipeline.py
+│   │   ├── review_detection_training_pipeline.py
+│   │   └── review_detection_inference_pipeline.py
 │   │
 │   ├── utils/
 │   │   ├── common.py
 │   │   └── preprocessing.py
 │   │
-│   ├── logger.py
+│   ├── constants.py
 │   ├── exception.py
-│   └── constants.py
-│
-├── config/
-│   ├── config.yaml
-│   ├── params.yaml
-│   └── schema.yaml
+│   ├── logger.py
+│   └── __init__.py
 │
 ├── tests/
 │   ├── test_preprocessing.py
 │   ├── test_training.py
 │   └── test_prediction.py
 │
-├── app/
-│   ├── main.py
-│   ├── routes.py
-│   ├── models.py
-│   └── schemas.py
-│
-├── chrome_extension/
-│   ├── manifest.json
-│   ├── popup/
-│   ├── background/
-│   ├── content/
-│   └── assets/
+├── .dvc/
 │
 ├── .github/
 │   └── workflows/
-│       └── ci_cd.yml
+│       ├── ci.yml
+│       └── cd.yml
 │
 ├── Dockerfile
 ├── docker-compose.yml
+├── dvc.yaml
 ├── requirements.txt
 ├── setup.py
-├── dvc.yaml
-├── .gitignore
 ├── README.md
-└── LICENSE
+├── LICENSE
+└── .gitignore
 ```
