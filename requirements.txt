@@ -1,4 +1,81 @@
-contractions
-emoji
-beautifulsoup4
+# ============================================================
+# InsightCart - AI Generated Review Detection
+# ============================================================
+
+# -------------------------
+# Core Python / Data Science
+# -------------------------
+numpy
+pandas
+scipy
+
+# -------------------------
+# Machine Learning
+# -------------------------
+scikit-learn
+xgboost
+lightgbm
+joblib
+
+# -------------------------
+# NLP
+# -------------------------
 nltk
+
+# -------------------------
+# ML Experiment Tracking
+# -------------------------
+mlflow
+
+# -------------------------
+# Model Serialization
+# -------------------------
+skops
+
+# -------------------------
+# FastAPI Backend
+# -------------------------
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+python-multipart
+
+# -------------------------
+# Environment Variables
+# -------------------------
+python-dotenv
+
+# -------------------------
+# HTTP / API
+# -------------------------
+requests
+httpx
+
+# -------------------------
+# Testing
+# -------------------------
+pytest
+
+# -------------------------
+# Code Quality
+# -------------------------
+black
+flake8
+
+# -------------------------
+# DVC
+# -------------------------
+dvc
+
+# -------------------------
+# Visualization
+# -------------------------
+matplotlib
+seaborn
+
+# -------------------------
+# Jupyter / Notebook
+# -------------------------
+jupyter
+ipykernel

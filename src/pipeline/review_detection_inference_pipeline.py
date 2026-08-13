@@ -5,7 +5,7 @@ File : review_detection_inference_pipeline.py
 
 Purpose :
 Load the trained model and preprocessing artifacts,
-prepare the input review, and perform inference.
+prepare the input review, and perform inference with qualitative confidence output.
 """
 
 import os
@@ -90,7 +90,7 @@ class ReviewDetectionInferencePipeline:
         return final_vector
 
     def predict(
-        self, review: str, rating: int, category: str
+        self, review: str, rating: int, category: str, title: str = ""
     ) -> Dict[str, Any]:
         try:
             logger.info("Starting Prediction Process")
@@ -109,13 +109,13 @@ class ReviewDetectionInferencePipeline:
             confidence = round(float(probabilities[prediction]) * 100, 2)
 
             if confidence >= 90:
-                confidence_level = "Very High"
+                confidence_level = "very_high"
             elif confidence >= 75:
-                confidence_level = "High"
+                confidence_level = "high"
             elif confidence >= 60:
-                confidence_level = "Moderate"
+                confidence_level = "moderate"
             else:
-                confidence_level = "Low"
+                confidence_level = "low"
 
             if prediction == 1:
                 review_type = "AI-Generated Review"
@@ -128,10 +128,10 @@ class ReviewDetectionInferencePipeline:
                 reason = "The writing style resembles authentic human-written reviews."
 
             response = {
+                "title": title or "Untitled Review",
                 "prediction": prediction,
                 "review_type": review_type,
-                "confidence": confidence,
-                "confidence_level": confidence_level,
+                "confidence": confidence_level,
                 "category": category,
                 "rating": rating,
                 "clean_review": cleaned_review,
@@ -144,59 +144,3 @@ class ReviewDetectionInferencePipeline:
         except Exception as e:
             logger.error("Prediction Failed")
             raise CustomException(e, sys)
-
-
-if __name__ == "__main__":
-
-    pipeline = ReviewDetectionInferencePipeline()
-
-    # Actual samples directly from mexwell/fake-reviews-dataset
-    test_reviews = [
-        # --- Real CG (Computer Generated / Fake) Samples from Dataset ---
-        {
-            "title": "Dataset CG Sample #1 (Electronics)",
-            "review": "I love this product. It works great and was very easy to set up. I would recommend this to anyone looking for a good quality item.",
-            "rating": 5,
-            "category": "Electronics_5",
-        },
-        {
-            "title": "Dataset CG Sample #2 (Kindle Store)",
-            "review": "This is a mini-chair! Not a real chair. It is a full chair that is comfortable",
-            "rating": 1,
-            "category": "Home_and_Kitchen_5",
-        },
-
-        # --- Real OR (Original / Human) Samples from Dataset ---
-        {
-            "title": "Dataset OR Sample #1 (Electronics)",
-            "review": "Easy clean cuts, nice to have the shaping pick in the handle.",
-            "rating": 5,
-            "category": "Sports_and_Outdoors_5",
-        },
-                {
-            "title": "Dataset OR Sample #1 (Electronics)",
-            "review": "Received product as expected.  Not an easy case to put on, but it is well made",
-            "rating": 4,
-            "category": "Electronics_5",
-        },
-    ]
-
-    for index, sample in enumerate(test_reviews, start=1):
-        print("\n" + "=" * 80)
-        print(f"Test Case {index} : {sample['title']}")
-        print("=" * 80)
-
-        result = pipeline.predict(
-            review=sample["review"],
-            rating=sample["rating"],
-            category=sample["category"],
-        )
-
-        print(f"Category         : {sample['category']}")
-        print(f"Rating           : {sample['rating']}")
-        print(f"Prediction Code  : {result['prediction']}")
-        print(f"Review Type      : {result['review_type']}")
-        print(
-            f"Confidence       : {result['confidence']}% ({result['confidence_level']})"
-        )
-        print(f"Reason           : {result['reason']}")

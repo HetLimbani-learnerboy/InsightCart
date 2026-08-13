@@ -42,15 +42,17 @@ def predict_review(
             review=request.review,
             rating=request.rating,
             category=request.category,
+            title=request.title or "",
         )
 
         return ReviewPredictionResponse(
+            title=result["title"],
             prediction=result["prediction"],
             review_type=result["review_type"],
             confidence=result["confidence"],
-            confidence_level=result["confidence_level"],
             category=result["category"],
             rating=result["rating"],
+            clean_review=result["clean_review"],
             reason=result["reason"],
         )
     except Exception as e:
@@ -65,7 +67,7 @@ def predict_review(
     response_model=BatchPredictionResponse,
     status_code=status.HTTP_200_OK,
     summary="Predict Multiple Reviews",
-    description="Analyze a batch of reviews where each review specifies its category and rating.",
+    description="Analyze a batch of reviews where each review specifies its title, category, and rating.",
 )
 def predict_batch(
     request: BatchPredictionRequest,
