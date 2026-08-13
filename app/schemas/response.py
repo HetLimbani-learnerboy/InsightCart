@@ -7,11 +7,17 @@ Purpose :
 Response schemas for the Review Detection API.
 """
 
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
 class ReviewPredictionResponse(BaseModel):
+
+    title: str = Field(
+        default="Untitled Review",
+        description="Review title",
+        examples=["Absolutely great if you have pets"],
+    )
 
     prediction: int = Field(
         ...,
@@ -25,61 +31,10 @@ class ReviewPredictionResponse(BaseModel):
         examples=["Human-Written Review"],
     )
 
-    confidence: float = Field(
+    confidence: str = Field(
         ...,
-        description="Prediction confidence percentage",
-        examples=[95.50],
-    )
-
-    confidence_level: str = Field(
-        ...,
-        description="Qualitative confidence band (Very High, High, Moderate, Low)",
-        examples=["Very High"],
-    )
-
-    category: str = Field(
-        ...,
-        description="Amazon product category",
-        examples=["Electronics_5"],
-    )
-
-    rating: int = Field(
-        ...,
-        description="Product rating",
-        examples=[5],
-    )
-
-    reason: str = Field(
-        ...,
-        description="Explanation for the classification result",
-        examples=["The writing style resembles authentic human-written reviews."],
-    )
-
-
-class BatchPredictionItem(BaseModel):
-
-    prediction: int = Field(
-        ...,
-        description="Prediction code (0 = Human-Written, 1 = AI-Generated)",
-        examples=[1],
-    )
-
-    review_type: str = Field(
-        ...,
-        description="Human-readable classification label",
-        examples=["AI-Generated Review"],
-    )
-
-    confidence: float = Field(
-        ...,
-        description="Prediction confidence percentage",
-        examples=[98.20],
-    )
-
-    confidence_level: str = Field(
-        ...,
-        description="Qualitative confidence band",
-        examples=["Very High"],
+        description="Qualitative confidence indicator (very_high, high, moderate, low)",
+        examples=["very_high"],
     )
 
     category: str = Field(
@@ -97,15 +52,61 @@ class BatchPredictionItem(BaseModel):
     clean_review: str = Field(
         ...,
         description="Cleaned/preprocessed review text",
-        examples=["great product work describe fast shipping good quality"],
     )
 
     reason: str = Field(
         ...,
         description="Explanation for the classification result",
-        examples=[
-            "The writing style is similar to computer-generated reviews observed during model training."
-        ],
+        examples=["The writing style resembles authentic human-written reviews."],
+    )
+
+
+class BatchPredictionItem(BaseModel):
+
+    title: str = Field(
+        default="Untitled Review",
+        description="Review title",
+        examples=["Absolutely great if you have pets"],
+    )
+
+    prediction: int = Field(
+        ...,
+        description="Prediction code (0 = Human-Written, 1 = AI-Generated)",
+        examples=[0],
+    )
+
+    review_type: str = Field(
+        ...,
+        description="Human-readable classification label",
+        examples=["Human-Written Review"],
+    )
+
+    confidence: str = Field(
+        ...,
+        description="Qualitative confidence band (very_high, high, moderate, low)",
+        examples=["very_high"],
+    )
+
+    category: str = Field(
+        ...,
+        description="Amazon product category",
+        examples=["Electronics_5"],
+    )
+
+    rating: int = Field(
+        ...,
+        description="Product rating",
+        examples=[5],
+    )
+
+    clean_review: str = Field(
+        ...,
+        description="Cleaned/preprocessed review text",
+    )
+
+    reason: str = Field(
+        ...,
+        description="Explanation for the classification result",
     )
 
 
@@ -114,7 +115,7 @@ class BatchPredictionResponse(BaseModel):
     total_reviews: int = Field(
         ...,
         description="Total number of reviews processed",
-        examples=[2],
+        examples=[1],
     )
 
     results: List[BatchPredictionItem] = Field(
@@ -125,20 +126,6 @@ class BatchPredictionResponse(BaseModel):
 
 class HealthResponse(BaseModel):
 
-    status: str = Field(
-        ...,
-        description="Health status of the API",
-        examples=["healthy"],
-    )
-
-    project: str = Field(
-        ...,
-        description="Project name",
-        examples=["InsightCart"],
-    )
-
-    version: str = Field(
-        ...,
-        description="API application version",
-        examples=["1.0.0"],
-    )
+    status: str = Field(..., examples=["healthy"])
+    project: str = Field(..., examples=["InsightCart"])
+    version: str = Field(..., examples=["1.0.0"])

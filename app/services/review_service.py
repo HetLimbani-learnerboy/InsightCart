@@ -28,6 +28,7 @@ class ReviewDetectionService:
         review: str,
         rating: int,
         category: str,
+        title: str = "",
     ) -> Dict[str, Any]:
         try:
             logger.info("Processing Single Review Prediction")
@@ -36,6 +37,7 @@ class ReviewDetectionService:
                 review=review,
                 rating=rating,
                 category=category,
+                title=title,
             )
 
             logger.info("Prediction Completed Successfully")
@@ -54,10 +56,12 @@ class ReviewDetectionService:
 
             predictions = []
             for item in reviews:
+                title = getattr(item, "title", "") or ""
                 prediction = self.pipeline.predict(
                     review=item.review,
                     rating=item.rating,
                     category=item.category,
+                    title=title,
                 )
                 predictions.append(prediction)
 

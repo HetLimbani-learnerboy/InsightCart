@@ -1,0 +1,39 @@
+{
+  "manifest_version": 3,
+  "name": "InsightCart",
+  "version": "1.0.0",
+  "description": "Detect AI-generated and human-written Amazon reviews.",
+  "permissions": [
+    "activeTab",
+    "storage"
+  ],
+  "host_permissions": [
+    "http://localhost:8000/*",
+    "https://*.amazon.com/*",
+    "https://*.amazon.in/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "InsightCart",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.amazon.com/*",
+        "https://*.amazon.in/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
