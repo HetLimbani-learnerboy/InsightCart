@@ -1094,3 +1094,6 @@ Topic Extraction
         ▼
 Product Recommendation
 My recommendation
+
+
+python -m uvicorn app.main:app --reload
