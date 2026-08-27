@@ -10,6 +10,7 @@ Service layer for AI Generated Review Detection.
 import sys
 from typing import Any, Dict, List
 
+from app.metrics import PREDICTION_COUNT
 from src.exception import CustomException
 from src.logger import logger
 from src.pipeline.review_detection_inference_pipeline import (
@@ -40,6 +41,10 @@ class ReviewDetectionService:
                 title=title,
             )
 
+            PREDICTION_COUNT.labels(
+                prediction_type=result["review_type"]
+            ).inc()
+
             logger.info("Prediction Completed Successfully")
             return result
 
@@ -63,6 +68,11 @@ class ReviewDetectionService:
                     category=item.category,
                     title=title,
                 )
+
+                PREDICTION_COUNT.labels(
+                    prediction_type=prediction["review_type"]
+                ).inc()
+
                 predictions.append(prediction)
 
             logger.info("Batch Prediction Completed Successfully")

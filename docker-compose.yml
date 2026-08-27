@@ -1,0 +1,83 @@
+services:
+
+  # =========================================================
+  # InsightCart FastAPI
+  # =========================================================
+
+  insightcart-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: insightcart-api
+
+    ports:
+      - "8000:8000"
+
+    env_file:
+      - .env
+
+    environment:
+      PYTHONUNBUFFERED: "1"
+
+    restart: unless-stopped
+
+
+  # =========================================================
+  # Prometheus
+  # =========================================================
+
+  prometheus:
+    image: prom/prometheus:latest
+
+    container_name: insightcart-prometheus
+
+    ports:
+      - "9090:9090"
+
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+
+    depends_on:
+      - insightcart-api
+
+    restart: unless-stopped
+
+
+  # =========================================================
+  # Grafana
+  # =========================================================
+
+  grafana:
+    image: grafana/grafana:latest
+
+    container_name: insightcart-grafana
+
+    ports:
+      - "3000:3000"
+
+    volumes:
+      - grafana_data:/var/lib/grafana
+
+    depends_on:
+      - prometheus
+
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+
+    restart: unless-stopped
+
+
+# =========================================================
+# Volumes
+# =========================================================
+
+volumes:
+  grafana_data:
+  prometheus_data:

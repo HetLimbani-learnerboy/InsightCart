@@ -18,19 +18,22 @@ lightgbm
 joblib
 
 # -------------------------
-# NLP
+# NLP & Text Preprocessing
 # -------------------------
 nltk
-
-# -------------------------
-# ML Experiment Tracking
-# -------------------------
-mlflow
+contractions
+beautifulsoup4
+emoji
 
 # -------------------------
 # Model Serialization
 # -------------------------
 skops
+
+# -------------------------
+# ML Experiment Tracking
+# -------------------------
+mlflow
 
 # -------------------------
 # FastAPI Backend
@@ -40,6 +43,12 @@ uvicorn[standard]
 pydantic
 pydantic-settings
 python-multipart
+
+# -------------------------
+# Database - PostgreSQL
+# -------------------------
+sqlalchemy
+psycopg[binary]
 
 # -------------------------
 # Environment Variables
@@ -79,3 +88,8 @@ seaborn
 # -------------------------
 jupyter
 ipykernel
+
+# -------------------------
+# Monitoring
+# -------------------------
+prometheus-client

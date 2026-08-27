@@ -1,0 +1,54 @@
+# Git
+.git
+.gitignore
+.github
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Notebooks
+notebooks/
+
+# DVC cache
+.dvc/cache/
+
+# MLflow local runs
+mlruns/
+
+# Development files
+.vscode/
+.idea/
+
+# macOS
+.DS_Store
+
+# Tests
+tests/
+
+# Chrome extension
+chrome_extension/
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# Python cache
+.pytest_cache/
+.mypy_cache/
+
+# Environment
+.env
