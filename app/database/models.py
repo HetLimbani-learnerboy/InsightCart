@@ -14,7 +14,6 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
-    Float,
     DateTime,
 )
 
@@ -41,21 +40,6 @@ class ReviewPrediction(Base):
         nullable=False,
     )
 
-    clean_review = Column(
-        Text,
-        nullable=True,
-    )
-
-    rating = Column(
-        Integer,
-        nullable=False,
-    )
-
-    category = Column(
-        String(255),
-        nullable=False,
-    )
-
     prediction = Column(
         Integer,
         nullable=False,
@@ -69,6 +53,21 @@ class ReviewPrediction(Base):
     confidence = Column(
         String(50),
         nullable=False,
+    )
+
+    category = Column(
+        String(255),
+        nullable=False,
+    )
+
+    rating = Column(
+        Integer,
+        nullable=False,
+    )
+
+    clean_review = Column(
+        Text,
+        nullable=True,
     )
 
     reason = Column(
