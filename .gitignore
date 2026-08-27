@@ -5,3 +5,7 @@ mlruns/
 app/__pycache__/
 
 logs/
+
+.env
+
+venv

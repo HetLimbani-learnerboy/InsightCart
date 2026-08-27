@@ -4,22 +4,30 @@ Project : InsightCart
 File : config.py
 
 Purpose :
-Store all FastAPI configuration values without pydantic-settings dependency.
+Store all FastAPI configuration values using pydantic-settings.
 """
 
-import os
-from pydantic import BaseModel
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class Settings(BaseModel):
+class Settings(BaseSettings):
+
     PROJECT_NAME: str = "InsightCart"
     PROJECT_VERSION: str = "1.0.0"
     API_PREFIX: str = "/api/v1"
     DESCRIPTION: str = "AI Powered Review Detection API"
 
-    HOST: str = os.getenv("HOST", "0.0.0.0")
-    PORT: int = int(os.getenv("PORT", 8000))
-    DEBUG: bool = os.getenv("DEBUG", "True").lower() in ("true", "1", "t")
+    HOST: str = "0.0.0.0"
+    PORT: int = 8000
+    DEBUG: bool = True
+
+    DATABASE_URL: str
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
 
 settings = Settings()
