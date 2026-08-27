@@ -93,3 +93,5 @@ ipykernel
 # Monitoring
 # -------------------------
 prometheus-client
+
+psycopg2-binary
