@@ -13,33 +13,13 @@ from dataclasses import dataclass
 
 from src.logger import logger
 from src.exception import CustomException
-from src.constants import (
-
-    TARGET_COLUMN,
-
-    TEXT_COLUMN,
-
-    CATEGORY_COLUMN,
-
-    RATING_COLUMN
-
-)
+from src.constants import TARGET_COLUMN, TEXT_COLUMN, CATEGORY_COLUMN, RATING_COLUMN
 
 
 @dataclass
 class DataValidationConfig:
 
-    required_columns = [
-
-        CATEGORY_COLUMN,
-
-        RATING_COLUMN,
-
-        TARGET_COLUMN,
-
-        TEXT_COLUMN
-
-    ]
+    required_columns = [CATEGORY_COLUMN, RATING_COLUMN, TARGET_COLUMN, TEXT_COLUMN]
 
 
 class DataValidation:
@@ -48,16 +28,11 @@ class DataValidation:
 
         self.config = DataValidationConfig()
 
-    def validate_dataset(
-        self,
-        dataframe
-    ):
+    def validate_dataset(self, dataframe):
 
         try:
 
-            logger.info(
-                "Dataset Validation Started"
-            )
+            logger.info("Dataset Validation Started")
 
             missing_columns = []
 
@@ -69,69 +44,36 @@ class DataValidation:
 
             if missing_columns:
 
-                raise ValueError(
+                raise ValueError(f"Missing Columns : {missing_columns}")
 
-                    f"Missing Columns : {missing_columns}"
+            logger.info("All Required Columns Found")
 
-                )
-
-            logger.info(
-                "All Required Columns Found"
-            )
-
-            logger.info(
-                "Checking Missing Values"
-            )
+            logger.info("Checking Missing Values")
 
             missing_values = dataframe.isnull().sum()
 
-            logger.info(
+            logger.info(f"\n{missing_values}")
 
-                f"\n{missing_values}"
-
-            )
-
-            logger.info(
-                "Checking Duplicate Records"
-            )
+            logger.info("Checking Duplicate Records")
 
             duplicate_count = dataframe.duplicated().sum()
 
-            logger.info(
+            logger.info(f"Duplicate Rows : {duplicate_count}")
 
-                f"Duplicate Rows : {duplicate_count}"
-
-            )
-
-            logger.info(
-                "Checking Target Labels"
-            )
+            logger.info("Checking Target Labels")
 
             labels = dataframe[TARGET_COLUMN].unique()
 
-            logger.info(
-
-                f"Labels : {labels}"
-
-            )
+            logger.info(f"Labels : {labels}")
 
             if not set(labels).issubset({"CG", "OR"}):
 
-                raise ValueError(
+                raise ValueError("Unexpected Label Found")
 
-                    "Unexpected Label Found"
-
-                )
-
-            logger.info(
-                "Dataset Validation Completed"
-            )
+            logger.info("Dataset Validation Completed")
 
             return dataframe
 
         except Exception as e:
 
-            raise CustomException(
-                e,
-                sys
-            )
+            raise CustomException(e, sys)

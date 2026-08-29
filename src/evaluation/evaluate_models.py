@@ -1,5 +1,4 @@
 import json
-import joblib
 
 from sklearn.metrics import (
     accuracy_score,
@@ -14,33 +13,10 @@ def evaluate_model(model, X_test, y_test):
     predictions = model.predict(X_test)
 
     metrics = {
-        "accuracy": float(
-            accuracy_score(y_test, predictions)
-        ),
-
-        "precision": float(
-            precision_score(
-                y_test,
-                predictions,
-                zero_division=0
-            )
-        ),
-
-        "recall": float(
-            recall_score(
-                y_test,
-                predictions,
-                zero_division=0
-            )
-        ),
-
-        "f1": float(
-            f1_score(
-                y_test,
-                predictions,
-                zero_division=0
-            )
-        ),
+        "accuracy": float(accuracy_score(y_test, predictions)),
+        "precision": float(precision_score(y_test, predictions, zero_division=0)),
+        "recall": float(recall_score(y_test, predictions, zero_division=0)),
+        "f1": float(f1_score(y_test, predictions, zero_division=0)),
     }
 
     return metrics

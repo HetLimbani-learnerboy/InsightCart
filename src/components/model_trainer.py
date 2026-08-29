@@ -147,9 +147,7 @@ class ModelTrainer:
                     }
                 )
 
-                logger.info(
-                    f"{model_name} | Accuracy={accuracy:.4f} | F1={f1:.4f}"
-                )
+                logger.info(f"{model_name} | Accuracy={accuracy:.4f} | F1={f1:.4f}")
 
             comparison_df = (
                 pd.DataFrame(model_results)
@@ -300,7 +298,9 @@ class ModelTrainer:
                     )
                     baseline_calibrated.fit(X_train, y_train)
                     baseline_calib_preds = baseline_calibrated.predict(X_test)
-                    baseline_calib_f1 = f1_score(y_test, baseline_calib_preds, zero_division=0)
+                    baseline_calib_f1 = f1_score(
+                        y_test, baseline_calib_preds, zero_division=0
+                    )
                     baseline_final_model = baseline_calibrated
 
                 # Tuned model metrics
@@ -317,7 +317,9 @@ class ModelTrainer:
                     )
                     tuned_calibrated.fit(X_train, y_train)
                     tuned_calib_preds = tuned_calibrated.predict(X_test)
-                    tuned_calib_f1 = f1_score(y_test, tuned_calib_preds, zero_division=0)
+                    tuned_calib_f1 = f1_score(
+                        y_test, tuned_calib_preds, zero_division=0
+                    )
                     tuned_final_model = tuned_calibrated
                     tuned_was_calibrated = True
 
@@ -334,12 +336,16 @@ class ModelTrainer:
                     final_model_name = best_model_name
                     if tuned_was_calibrated:
                         final_model_name = f"Calibrated {best_model_name}"
-                    logger.info("Tuned model outperformed baseline after calibration — selecting tuned model.")
+                    logger.info(
+                        "Tuned model outperformed baseline after calibration — selecting tuned model."
+                    )
                 else:
                     final_model = baseline_final_model
                     final_model_name = best_model_name
                     best_parameters = {}
-                    logger.info("Tuned model did not outperform baseline after calibration — keeping baseline model.")
+                    logger.info(
+                        "Tuned model did not outperform baseline after calibration — keeping baseline model."
+                    )
 
                 final_predictions = final_model.predict(X_test)
                 final_f1 = f1_score(y_test, final_predictions, zero_division=0)
@@ -347,8 +353,10 @@ class ModelTrainer:
                 logger.info(f"FINAL MODEL: {final_model_name}")
                 logger.info(f"FINAL F1: {final_f1:.4f}")
 
-            except Exception as e:
-                logger.error("Error during tuned vs baseline comparison, falling back to tuned model")
+            except Exception:
+                logger.error(
+                    "Error during tuned vs baseline comparison, falling back to tuned model"
+                )
                 final_model = tuned_model
                 final_model_name = best_model_name
 

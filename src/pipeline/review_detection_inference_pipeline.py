@@ -12,16 +12,12 @@ import os
 import sys
 
 # Add project root directory (InsightCart) to sys.path
-project_root = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "../../")
-)
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 from dataclasses import dataclass
 from typing import Any, Dict
-
-import numpy as np
 import pandas as pd
 from scipy.sparse import hstack
 
@@ -99,9 +95,7 @@ class ReviewDetectionInferencePipeline:
 
             cleaned_review = clean_text(review)
 
-            feature_vector = self.prepare_features(
-                cleaned_review, rating, category
-            )
+            feature_vector = self.prepare_features(cleaned_review, rating, category)
 
             prediction = int(self.model.predict(feature_vector)[0])
             probabilities = self.model.predict_proba(feature_vector)[0]

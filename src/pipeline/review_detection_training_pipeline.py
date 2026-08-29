@@ -55,7 +55,7 @@ class TrainingPipeline:
         )
 
         evaluator = ModelEvaluation()
-        evaluation_artifacts = evaluator.initiate_model_evaluation(
+        evaluator.initiate_model_evaluation(
             trainer_artifacts,
             transformation_artifacts.X_test,
             transformation_artifacts.y_test,
@@ -77,10 +77,7 @@ class TrainingPipeline:
         # Run quality gate: if no production metrics exist, allow push
         passed = True
         if new_metrics is None:
-            logger.error(
-                "Evaluation metrics not found. "
-                "Model promotion blocked."
-            )
+            logger.error("Evaluation metrics not found. " "Model promotion blocked.")
             passed = False
         else:
             passed = model_quality_gate(
@@ -92,7 +89,9 @@ class TrainingPipeline:
         pusher = ModelPusher()
         if passed:
             # push model and record production metrics
-            model_path = pusher.initiate_model_pusher(trainer_artifacts, evaluation_metrics=new_metrics)
+            model_path = pusher.initiate_model_pusher(
+                trainer_artifacts, evaluation_metrics=new_metrics
+            )
             logger.info(f"Model promoted to production: {model_path}")
         else:
             logger.info("Model did not pass quality gate. Not promoting to production.")

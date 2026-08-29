@@ -7,10 +7,7 @@ Purpose : Custom exception handling
 import sys
 
 
-def get_error_message(
-    error,
-    error_detail: sys
-):
+def get_error_message(error, error_detail: sys):
 
     _, _, exc_tb = error_detail.exc_info()
 
@@ -26,18 +23,11 @@ def get_error_message(
 
 class CustomException(Exception):
 
-    def __init__(
-        self,
-        error,
-        error_detail: sys
-    ):
+    def __init__(self, error, error_detail: sys):
 
         super().__init__(str(error))
 
-        self.error_message = get_error_message(
-            error,
-            error_detail
-        )
+        self.error_message = get_error_message(error, error_detail)
 
     def __str__(self):
 

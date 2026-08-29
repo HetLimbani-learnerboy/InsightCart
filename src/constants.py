@@ -22,49 +22,20 @@ RATING_COLUMN = "rating"
 
 CLEAN_TEXT_COLUMN = "clean_review"
 
-RAW_DATA_PATH = os.path.join(
-    "data",
-    "raw",
-    "fake_reviews_dataset.csv"
-)
+RAW_DATA_PATH = os.path.join("data", "raw", "fake_reviews_dataset.csv")
 
-PROCESSED_DATA_PATH = os.path.join(
-    "data",
-    "processed",
-    "preprocessed_dataset.csv"
-)
+PROCESSED_DATA_PATH = os.path.join("data", "processed", "preprocessed_dataset.csv")
 
-MODEL_DIR = os.path.join(
-    "artifacts",
-    "models"
-)
+MODEL_DIR = os.path.join("artifacts", "models")
 
-REPORT_DIR = os.path.join(
-    "artifacts",
-    "reports"
-)
+REPORT_DIR = os.path.join("artifacts", "reports")
 
-PLOT_DIR = os.path.join(
-    "artifacts",
-    "plots"
-)
+PLOT_DIR = os.path.join("artifacts", "plots")
 
-MODEL_PATH = os.path.join(
-    MODEL_DIR,
-    "best_linear_svm_calibrated.pkl"
-)
+MODEL_PATH = os.path.join(MODEL_DIR, "best_linear_svm_calibrated.pkl")
 
-TFIDF_PATH = os.path.join(
-    MODEL_DIR,
-    "tfidf_vectorizer.pkl"
-)
+TFIDF_PATH = os.path.join(MODEL_DIR, "tfidf_vectorizer.pkl")
 
-ENCODER_PATH = os.path.join(
-    MODEL_DIR,
-    "category_encoder.pkl"
-)
+ENCODER_PATH = os.path.join(MODEL_DIR, "category_encoder.pkl")
 
-SCALER_PATH = os.path.join(
-    MODEL_DIR,
-    "rating_scaler.pkl"
-)
+SCALER_PATH = os.path.join(MODEL_DIR, "rating_scaler.pkl")
