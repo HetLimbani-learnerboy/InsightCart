@@ -20,6 +20,9 @@ import warnings
 from src.components.model_evaluation import ModelEvaluation
 from src.components.model_pusher import ModelPusher
 from src.logger import logger
+from src.evaluation.model_gate import model_quality_gate
+import json
+import os
 
 
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -57,9 +60,43 @@ class TrainingPipeline:
             transformation_artifacts.X_test,
             transformation_artifacts.y_test,
         )
+        # Load new evaluation metrics saved by ModelEvaluation (if any)
+        eval_metrics_path = "artifacts/evaluation_results.json"
+        new_metrics = None
+        if os.path.exists(eval_metrics_path):
+            with open(eval_metrics_path, "r") as f:
+                new_metrics = json.load(f)
+
+        # Load production metrics if they exist
+        prod_metrics_path = "artifacts/production_metrics.json"
+        prod_metrics = None
+        if os.path.exists(prod_metrics_path):
+            with open(prod_metrics_path, "r") as f:
+                prod_metrics = json.load(f)
+
+        # Run quality gate: if no production metrics exist, allow push
+        passed = True
+        if new_metrics is None:
+            logger.error(
+                "Evaluation metrics not found. "
+                "Model promotion blocked."
+            )
+            passed = False
+        else:
+            passed = model_quality_gate(
+                new_metrics,
+                prod_metrics or {},
+                minimum_f1=0.90,
+            )
 
         pusher = ModelPusher()
-        model_path = pusher.initiate_model_pusher(trainer_artifacts)
+        if passed:
+            # push model and record production metrics
+            model_path = pusher.initiate_model_pusher(trainer_artifacts, evaluation_metrics=new_metrics)
+            logger.info(f"Model promoted to production: {model_path}")
+        else:
+            logger.info("Model did not pass quality gate. Not promoting to production.")
+            model_path = None
 
         logger.info("Pipeline Completed Successfully")
         logger.info(f"Model Saved At : {model_path}")

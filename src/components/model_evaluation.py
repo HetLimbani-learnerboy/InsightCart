@@ -27,6 +27,7 @@ from sklearn.metrics import (
 from src.exception import CustomException
 from src.logger import logger
 from src.components.model_trainer import ModelTrainerArtifacts
+from src.evaluation.evaluate_models import save_metrics
 
 
 @dataclass
@@ -92,7 +93,8 @@ class ModelEvaluation:
             mlflow.set_experiment(self.config.experiment_name)
 
             with mlflow.start_run(run_name=trainer_artifacts.best_model_name):
-                mlflow.log_param("Algorithm", "Linear SVM")
+                mlflow.log_param("Algorithm", trainer_artifacts.best_model_name)
+                mlflow.set_tag("selected_model", trainer_artifacts.best_model_name)
                 mlflow.log_param("Calibration", "Sigmoid")
 
                 for param_name, param_val in best_params.items():
@@ -109,6 +111,20 @@ class ModelEvaluation:
                         "sklearn.calibration._SigmoidCalibration",
                     ],
                 )
+
+            # --- 5. Save metrics to artifacts for downstream consumption ---
+            try:
+                metrics_out = {
+                    "accuracy": float(metrics["Accuracy"]),
+                    "precision": float(metrics["Precision"]),
+                    "recall": float(metrics["Recall"]),
+                    "f1": float(metrics["F1 Score"]),
+                    "roc_auc": float(metrics["ROC AUC"]),
+                }
+                saved_path = save_metrics(metrics_out, out_path="artifacts/evaluation_results.json")
+                logger.info(f"Saved evaluation metrics to: {saved_path}")
+            except Exception:
+                logger.warning("Failed to save evaluation metrics to artifacts")
 
             logger.info("MLflow Experiment Logging Completed")
 

@@ -1,0 +1,48 @@
+name: InsightCart ML Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  ml-pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Pull DVC dataset
+        run: |
+          dvc pull
+
+      - name: Run Flake8
+        run: |
+          flake8 app src
+
+      - name: Run tests
+        run: |
+          pytest -v
+
+      - name: Run InsightCart Training Pipeline
+        run: |
+          python src/pipeline/review_detection_training_pipeline.py
+
+      - name: Show evaluation metrics
+        run: |
+          cat artifacts/evaluation_results.json
+
+      - name: Show model comparison
+        run: |
+          cat data/processed/model_comparison.csv
