@@ -45,9 +45,7 @@ class ReviewDetectionService:
                 title=title,
             )
 
-            PREDICTION_COUNT.labels(
-                prediction_type=result["review_type"]
-            ).inc()
+            PREDICTION_COUNT.labels(prediction_type=result["review_type"]).inc()
 
             if db:
                 prediction_record = ReviewPrediction(
@@ -96,9 +94,7 @@ class ReviewDetectionService:
                     title=title,
                 )
 
-                PREDICTION_COUNT.labels(
-                    prediction_type=prediction["review_type"]
-                ).inc()
+                PREDICTION_COUNT.labels(prediction_type=prediction["review_type"]).inc()
 
                 if db:
                     prediction_record = ReviewPrediction(
@@ -118,9 +114,7 @@ class ReviewDetectionService:
 
             if db:
                 db.commit()
-                logger.info(
-                    f"{len(predictions)} predictions saved to database"
-                )
+                logger.info(f"{len(predictions)} predictions saved to database")
 
             logger.info("Batch Prediction Completed Successfully")
             return {
@@ -152,7 +146,5 @@ class ReviewDetectionService:
             }
 
         except Exception as e:
-            logger.error(
-                f"Amazon Product Review Processing Failed for {product_name}"
-            )
+            logger.error(f"Amazon Product Review Processing Failed for {product_name}")
             raise CustomException(e, sys)

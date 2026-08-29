@@ -45,11 +45,7 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
 
             endpoint = request.url.path
 
-            status_code = (
-                response.status_code
-                if response is not None
-                else 500
-            )
+            status_code = response.status_code if response is not None else 500
 
             # Request count
             REQUEST_COUNT.labels(

@@ -7,7 +7,6 @@ Purpose :
 Application Entry Point.
 """
 
-
 import uvicorn
 
 from fastapi import FastAPI
@@ -32,9 +31,7 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-app.add_middleware(
-    PrometheusMiddleware
-)
+app.add_middleware(PrometheusMiddleware)
 
 # Enable CORS for external frontend or API clients
 app.add_middleware(
@@ -59,6 +56,7 @@ def home():
         "documentation": "/docs",
     }
 
+
 @app.get(
     "/metrics",
     tags=["Monitoring"],
@@ -69,7 +67,8 @@ def metrics():
         content=generate_latest(),
         media_type=CONTENT_TYPE_LATEST,
     )
-    
+
+
 if __name__ == "__main__":
     uvicorn.run(
         "app.main:app",

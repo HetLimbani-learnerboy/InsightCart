@@ -14,9 +14,7 @@ from app.config import settings
 from app.schemas.response import HealthResponse
 
 
-router = APIRouter(
-    tags=["Health"]
-)
+router = APIRouter(tags=["Health"])
 
 
 @router.get(
@@ -26,11 +24,7 @@ router = APIRouter(
 def health():
 
     return HealthResponse(
-
         status="Healthy",
-
         project=settings.PROJECT_NAME,
-
         version=settings.PROJECT_VERSION,
-
     )

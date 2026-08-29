@@ -1,12 +1,9 @@
 from app.database.connection import engine, Base
-from app.database.models import ReviewPrediction
+from app.database.models import ReviewPrediction  # noqa: F401
 
 
 def init_db():
-
-    Base.metadata.create_all(
-        bind=engine
-    )
+    Base.metadata.create_all(bind=engine)
 
     print("Database tables created successfully.")
 

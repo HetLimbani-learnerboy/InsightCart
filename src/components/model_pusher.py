@@ -36,14 +36,13 @@ class ModelPusher:
                 trainer_artifacts.trained_model,
             )
 
-            logger.info(
-                f"Model Saved Successfully : {self.config.model_path}"
-            )
+            logger.info(f"Model Saved Successfully : {self.config.model_path}")
 
             # Optionally save production metrics when provided
             if evaluation_metrics is not None:
                 try:
                     import json
+
                     prod_metrics_path = "artifacts/production_metrics.json"
                     os.makedirs(os.path.dirname(prod_metrics_path), exist_ok=True)
                     with open(prod_metrics_path, "w") as f:

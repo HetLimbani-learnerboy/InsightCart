@@ -78,9 +78,9 @@ class DataTransformation:
             )
 
             logger.info("Cleaning Review Text")
-            transformed_df[CLEAN_TEXT_COLUMN] = transformed_df[
-                TEXT_COLUMN
-            ].apply(clean_text)
+            transformed_df[CLEAN_TEXT_COLUMN] = transformed_df[TEXT_COLUMN].apply(
+                clean_text
+            )
 
             logger.info("Performing Train-Test Split")
             train_df, test_df = train_test_split(
@@ -98,9 +98,7 @@ class DataTransformation:
                 max_df=self.config.max_df,
             )
 
-            review_features_train = tfidf.fit_transform(
-                train_df[CLEAN_TEXT_COLUMN]
-            )
+            review_features_train = tfidf.fit_transform(train_df[CLEAN_TEXT_COLUMN])
             review_features_test = tfidf.transform(test_df[CLEAN_TEXT_COLUMN])
 
             save_object(self.config.tfidf_path, tfidf)
@@ -109,21 +107,15 @@ class DataTransformation:
             logger.info("Encoding Product Categories")
             encoder = OneHotEncoder(handle_unknown="ignore")
 
-            category_features_train = encoder.fit_transform(
-                train_df[[CATEGORY_COLUMN]]
-            )
-            category_features_test = encoder.transform(
-                test_df[[CATEGORY_COLUMN]]
-            )
+            category_features_train = encoder.fit_transform(train_df[[CATEGORY_COLUMN]])
+            category_features_test = encoder.transform(test_df[[CATEGORY_COLUMN]])
 
             save_object(self.config.encoder_path, encoder)
             logger.info("Category Encoder Saved Successfully")
 
             logger.info("Scaling Rating Feature (0 to 1)")
             scaler = MinMaxScaler()
-            rating_features_train = scaler.fit_transform(
-                train_df[[RATING_COLUMN]]
-            )
+            rating_features_train = scaler.fit_transform(train_df[[RATING_COLUMN]])
             rating_features_test = scaler.transform(test_df[[RATING_COLUMN]])
 
             save_object(self.config.scaler_path, scaler)

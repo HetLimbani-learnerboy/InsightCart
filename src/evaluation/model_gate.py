@@ -11,7 +11,9 @@ def model_quality_gate(
        (ties are rejected to avoid unnecessary replacements.)
     """
     new_f1 = float(new_metrics.get("f1", 0.0))
-    production_f1 = float(production_metrics.get("f1", 0.0)) if production_metrics else 0.0
+    production_f1 = (
+        float(production_metrics.get("f1", 0.0)) if production_metrics else 0.0
+    )
 
     print(f"New Model F1       : {new_f1:.4f}")
     print(f"Production Model F1: {production_f1:.4f}")
@@ -23,7 +25,9 @@ def model_quality_gate(
 
     # Rule 2: must be strictly better than production if production exists
     if production_metrics and new_f1 <= production_f1:
-        print(f"Model rejected: new F1 {new_f1:.4f} <= production F1 {production_f1:.4f}")
+        print(
+            f"Model rejected: new F1 {new_f1:.4f} <= production F1 {production_f1:.4f}"
+        )
         return False
 
     print("Model passed quality gate.")

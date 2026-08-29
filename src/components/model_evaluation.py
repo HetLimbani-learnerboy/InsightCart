@@ -121,7 +121,9 @@ class ModelEvaluation:
                     "f1": float(metrics["F1 Score"]),
                     "roc_auc": float(metrics["ROC AUC"]),
                 }
-                saved_path = save_metrics(metrics_out, out_path="artifacts/evaluation_results.json")
+                saved_path = save_metrics(
+                    metrics_out, out_path="artifacts/evaluation_results.json"
+                )
                 logger.info(f"Saved evaluation metrics to: {saved_path}")
             except Exception:
                 logger.warning("Failed to save evaluation metrics to artifacts")

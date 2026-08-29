@@ -43,23 +43,14 @@ class DataIngestion:
                     f"Dataset not found : {self.config.raw_data_path}"
                 )
 
-            dataframe = pd.read_csv(
-                self.config.raw_data_path
-            )
+            dataframe = pd.read_csv(self.config.raw_data_path)
 
-            logger.info(
-                "Dataset Loaded Successfully"
-            )
+            logger.info("Dataset Loaded Successfully")
 
-            logger.info(
-                f"Dataset Shape : {dataframe.shape}"
-            )
+            logger.info(f"Dataset Shape : {dataframe.shape}")
 
             return dataframe
 
         except Exception as e:
 
-            raise CustomException(
-                e,
-                sys
-            )
+            raise CustomException(e, sys)

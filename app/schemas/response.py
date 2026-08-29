@@ -7,7 +7,7 @@ Purpose :
 Response schemas for the Review Detection API.
 """
 
-from typing import List, Optional
+from typing import List
 from pydantic import BaseModel, Field
 
 
