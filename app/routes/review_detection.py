@@ -20,7 +20,9 @@ router = APIRouter(
     tags=["Review Detection"],
 )
 
-service = ReviewDetectionService()
+
+def get_review_service() -> ReviewDetectionService:
+    return ReviewDetectionService()
 
 
 @router.post(
@@ -35,6 +37,7 @@ service = ReviewDetectionService()
 def predict_review(
     request: ReviewPredictionRequest,
     db: Session = Depends(get_db),
+    service: ReviewDetectionService = Depends(get_review_service),
 ):
     try:
         result = service.predict_review(
@@ -73,6 +76,7 @@ def predict_review(
 def predict_batch(
     request: BatchPredictionRequest,
     db: Session = Depends(get_db),
+    service: ReviewDetectionService = Depends(get_review_service),
 ):
     try:
         result = service.predict_batch(
