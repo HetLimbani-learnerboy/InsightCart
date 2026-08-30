@@ -7,6 +7,7 @@ Purpose :
 Evaluate trained models, compute metrics, produce reports, and log experiments to MLflow.
 """
 
+import os
 import sys
 from dataclasses import dataclass
 from typing import Any, Dict
@@ -24,10 +25,10 @@ from sklearn.metrics import (
     roc_auc_score,
 )
 
-from src.exception import CustomException
-from src.logger import logger
 from src.components.model_trainer import ModelTrainerArtifacts
 from src.evaluation.evaluate_models import save_metrics
+from src.exception import CustomException
+from src.logger import logger
 
 
 @dataclass
@@ -88,8 +89,12 @@ class ModelEvaluation:
             logger.info("\nClassification Report:\n%s", report)
             logger.info("\nConfusion Matrix:\n%s", cm)
 
-            # --- 4. MLflow Logging ---
-            logger.info("Logging Evaluation Results to MLflow")
+            # --- 4. MLflow Setup with Relative Local Path ---
+            mlruns_dir = os.path.abspath("mlruns")
+            os.makedirs(mlruns_dir, exist_ok=True)
+            mlflow.set_tracking_uri(f"file://{mlruns_dir}")
+
+            logger.info(f"Logging Evaluation Results to MLflow at {mlruns_dir}")
             mlflow.set_experiment(self.config.experiment_name)
 
             with mlflow.start_run(run_name=trainer_artifacts.best_model_name):
@@ -106,10 +111,6 @@ class ModelEvaluation:
                 mlflow.sklearn.log_model(
                     sk_model=model,
                     name="model",
-                    skops_trusted_types=[
-                        "sklearn.calibration._CalibratedClassifier",
-                        "sklearn.calibration._SigmoidCalibration",
-                    ],
                 )
 
             # --- 5. Save metrics to artifacts for downstream consumption ---

@@ -10,16 +10,15 @@ prepare the input review, and perform inference with qualitative confidence outp
 
 import os
 import sys
+from dataclasses import dataclass
+from typing import Any, Dict
 
-# Add project root directory (InsightCart) to sys.path
+import pandas as pd
+from scipy.sparse import hstack
+
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
-
-from dataclasses import dataclass
-from typing import Any, Dict
-import pandas as pd
-from scipy.sparse import hstack
 
 from src.constants import (
     CATEGORY_COLUMN,
