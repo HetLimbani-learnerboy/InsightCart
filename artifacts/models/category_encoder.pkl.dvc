@@ -1,5 +1,0 @@
-outs:
-- md5: 2167dc2ba41ba8e68f9b6d235c0d0169
-  size: 1172
-  hash: md5
-  path: category_encoder.pkl
