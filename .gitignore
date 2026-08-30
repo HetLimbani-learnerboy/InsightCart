@@ -58,3 +58,7 @@ build/
 # Temporary
 tmp/
 temp/
+
+mlflow.db
+mlruns/
+artifacts/mlruns/
