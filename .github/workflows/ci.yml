@@ -13,7 +13,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL}}
+      DATABASE_URL: ${{ secrets.DATABASE_URL || 'sqlite:///./test.db' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -50,7 +50,7 @@ jobs:
           joblib.dump(vec, 'artifacts/models/tfidf_vectorizer.pkl')
 
           # Category encoder
-          enc = OneHotEncoder(handle_unknown='ignore', sparse=True)
+          enc = OneHotEncoder(handle_unknown='ignore', sparse_output=True)
           enc.fit([['unknown']])
           joblib.dump(enc, 'artifacts/models/category_encoder.pkl')
 

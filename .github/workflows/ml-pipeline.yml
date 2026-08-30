@@ -9,12 +9,6 @@ on:
 jobs:
   ml-pipeline:
     runs-on: ubuntu-latest
-    env:
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      AWS_DEFAULT_REGION: ap-south-1
-      DATABASE_URL: ${{ secrets.DATABASE_URL || 'sqlite:///./test.db' }}
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -30,6 +24,21 @@ jobs:
           pip install -r requirements.txt
           pip install dvc-s3
 
+      - name: Configure AWS Credentials on Runner
+        run: |
+          mkdir -p ~/.aws
+          cat <<EOF > ~/.aws/credentials
+          [default]
+          aws_access_key_id = ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key = ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          EOF
+
+          cat <<EOF > ~/.aws/config
+          [default]
+          region = ap-south-1
+          output = json
+          EOF
+
       - name: Verify S3 Connection
         run: |
           aws s3 ls s3://insightcart-mlops-dvc-2026/
@@ -39,6 +48,8 @@ jobs:
           flake8 app src
 
       - name: Run tests
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL || 'sqlite:///./test.db' }}
         run: |
           pytest -v
 
@@ -47,6 +58,8 @@ jobs:
           dvc pull
 
       - name: Run InsightCart Training Pipeline
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL || 'sqlite:///./test.db' }}
         run: |
           python src/pipeline/review_detection_training_pipeline.py
 
