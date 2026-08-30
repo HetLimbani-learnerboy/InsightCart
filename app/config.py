@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     PORT: int = 8000
     DEBUG: bool = True
 
-    DATABASE_URL: str
+    DATABASE_URL: str = "sqlite:///./test.db"
 
     model_config = SettingsConfigDict(
         env_file=".env",
