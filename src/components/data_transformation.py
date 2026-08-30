@@ -105,7 +105,7 @@ class DataTransformation:
             logger.info("TF-IDF Vectorizer Saved Successfully")
 
             logger.info("Encoding Product Categories")
-            encoder = OneHotEncoder(handle_unknown="ignore")
+            encoder = OneHotEncoder(sparse_output=True, handle_unknown="ignore")
 
             category_features_train = encoder.fit_transform(train_df[[CATEGORY_COLUMN]])
             category_features_test = encoder.transform(test_df[[CATEGORY_COLUMN]])
