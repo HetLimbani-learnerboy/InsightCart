@@ -14,7 +14,6 @@ from typing import Any, Dict
 
 import mlflow
 import mlflow.sklearn
-import joblib
 import numpy as np
 from sklearn.metrics import (
     accuracy_score,
@@ -30,6 +29,11 @@ from src.components.model_trainer import ModelTrainerArtifacts
 from src.evaluation.evaluate_models import save_metrics
 from src.exception import CustomException
 from src.logger import logger
+
+os.environ["MLFLOW_ALLOW_FILE_STORE"] = "true"
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
+SQLITE_DB_PATH = os.path.join(PROJECT_ROOT, "mlflow.db")
+mlflow.set_tracking_uri(f"sqlite:///{SQLITE_DB_PATH}")
 
 
 @dataclass
@@ -90,12 +94,11 @@ class ModelEvaluation:
             logger.info("\nClassification Report:\n%s", report)
             logger.info("\nConfusion Matrix:\n%s", cm)
 
-            # --- 4. MLflow Setup with Relative Local Path ---
-            mlruns_dir = os.path.abspath("mlruns")
-            os.makedirs(mlruns_dir, exist_ok=True)
-            mlflow.set_tracking_uri(f"file://{mlruns_dir}")
-
-            logger.info(f"Logging Evaluation Results to MLflow at {mlruns_dir}")
+            # --- 4. MLflow Logging ---
+            logger.info(
+                f"Logging Evaluation Results to MLflow using SQLite DB at {SQLITE_DB_PATH}"
+            )
+            mlflow.set_tracking_uri(f"sqlite:///{SQLITE_DB_PATH}")
             mlflow.set_experiment(self.config.experiment_name)
 
             with mlflow.start_run(run_name=trainer_artifacts.best_model_name):
@@ -109,31 +112,15 @@ class ModelEvaluation:
                 for metric_name, metric_val in metrics.items():
                     mlflow.log_metric(metric_name, metric_val)
 
-                try:
-                    mlflow.sklearn.log_model(
-                        sk_model=model,
-                        name="model",
-                        skops_trusted_types=[
-                            "sklearn.calibration._CalibratedClassifier",
-                            "sklearn.calibration._SigmoidCalibration",
-                        ],
-                    )
-                except Exception as me:
-                    logger.warning(
-                        "MLflow refused to log model (%s). Falling back to local save. Error: %s",
-                        trainer_artifacts.best_model_name,
-                        str(me),
-                    )
-                    os.makedirs('artifacts/models', exist_ok=True)
-                    fallback_path = os.path.join(
-                        'artifacts', 'models', f"{trainer_artifacts.best_model_name}.pkl"
-                    )
-                    joblib.dump(model, fallback_path)
-                    try:
-                        # attempt to log the artifact if MLflow is available
-                        mlflow.log_artifact(fallback_path, artifact_path="model")
-                    except Exception:
-                        logger.warning("Failed to log fallback model artifact to MLflow")
+                mlflow.sklearn.log_model(
+                    sk_model=model,
+                    name="model",
+                    skops_trusted_types=[
+                        "sklearn.calibration._CalibratedClassifier",
+                        "sklearn.calibration._SigmoidCalibration",
+                        "sklearn.calibration.CalibratedClassifierCV",
+                    ],
+                )
 
             # --- 5. Save metrics to artifacts for downstream consumption ---
             try:
