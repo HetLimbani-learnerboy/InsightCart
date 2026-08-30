@@ -81,6 +81,7 @@ jobs:
       - name: Run tests
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL || 'sqlite:///./test.db' }}
+          MLFLOW_ALLOW_FILE_STORE: 'true'
         run: |
           pytest -v
 
@@ -88,6 +89,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL || 'sqlite:///./test.db' }}
           MLFLOW_TRACKING_URI: "file://${{ github.workspace }}/mlruns"
+          MLFLOW_ALLOW_FILE_STORE: 'true'
         run: |
           python src/pipeline/review_detection_training_pipeline.py
 

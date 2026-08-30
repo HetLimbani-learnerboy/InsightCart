@@ -14,6 +14,7 @@ from typing import Any, Dict
 
 import mlflow
 import mlflow.sklearn
+import joblib
 import numpy as np
 from sklearn.metrics import (
     accuracy_score,
@@ -108,10 +109,31 @@ class ModelEvaluation:
                 for metric_name, metric_val in metrics.items():
                     mlflow.log_metric(metric_name, metric_val)
 
-                mlflow.sklearn.log_model(
-                    sk_model=model,
-                    name="model",
-                )
+                try:
+                    mlflow.sklearn.log_model(
+                        sk_model=model,
+                        name="model",
+                        skops_trusted_types=[
+                            "sklearn.calibration._CalibratedClassifier",
+                            "sklearn.calibration._SigmoidCalibration",
+                        ],
+                    )
+                except Exception as me:
+                    logger.warning(
+                        "MLflow refused to log model (%s). Falling back to local save. Error: %s",
+                        trainer_artifacts.best_model_name,
+                        str(me),
+                    )
+                    os.makedirs('artifacts/models', exist_ok=True)
+                    fallback_path = os.path.join(
+                        'artifacts', 'models', f"{trainer_artifacts.best_model_name}.pkl"
+                    )
+                    joblib.dump(model, fallback_path)
+                    try:
+                        # attempt to log the artifact if MLflow is available
+                        mlflow.log_artifact(fallback_path, artifact_path="model")
+                    except Exception:
+                        logger.warning("Failed to log fallback model artifact to MLflow")
 
             # --- 5. Save metrics to artifacts for downstream consumption ---
             try:
