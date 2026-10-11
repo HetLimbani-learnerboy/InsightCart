@@ -9,7 +9,6 @@ Prometheus metrics for InsightCart.
 
 from prometheus_client import Counter, Histogram
 
-
 # ============================================================
 # HTTP REQUEST METRICS
 # ============================================================

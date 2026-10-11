@@ -14,7 +14,9 @@ database_url = settings.DATABASE_URL or "sqlite:///./test.db"
 # Neon fix: Ensure proper dialect for psycopg2
 if database_url.startswith("postgres://"):
     database_url = database_url.replace("postgres://", "postgresql+psycopg2://", 1)
-elif database_url.startswith("postgresql://") and not database_url.startswith("postgresql+"):
+elif database_url.startswith("postgresql://") and not database_url.startswith(
+    "postgresql+"
+):
     database_url = database_url.replace("postgresql://", "postgresql+psycopg2://", 1)
 
 # Connection engine parameters
@@ -28,7 +30,7 @@ else:
     engine = create_engine(
         database_url,
         pool_pre_ping=True,  # Automatically reconnects if Neon drops idle serverless connection
-        pool_recycle=300,   # Recycles connections every 5 minutes
+        pool_recycle=300,  # Recycles connections every 5 minutes
     )
 
 SessionLocal = sessionmaker(
