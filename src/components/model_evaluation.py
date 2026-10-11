@@ -25,7 +25,7 @@ from sklearn.metrics import (
     roc_auc_score,
 )
 
-from src.components.model_trainer import ModelTrainerArtifacts
+from src.components.model_trainer import ModelTrainer, ModelTrainerArtifacts
 from src.evaluation.evaluate_models import save_metrics
 from src.exception import CustomException
 from src.logger import logger
@@ -128,6 +128,10 @@ class ModelEvaluation:
         trainer_artifacts: ModelTrainerArtifacts,
         X_test: Any,
         y_test: Any,
+        metrics_path: str = "artifacts/evaluation_results.json",
+        dataset_version: str = "production",
+        comparison_path: str = None,
+        tracking_parameters: Dict[str, Any] = None,
     ) -> ModelEvaluationArtifacts:
         try:
             logger.info("Model Evaluation Started")
@@ -138,14 +142,21 @@ class ModelEvaluation:
             # --- 1. Predictions ---
             logger.info("Generating Predictions on Test Dataset")
             predictions = model.predict(X_test)
-            probabilities = model.predict_proba(X_test)[:, 1]
+            probabilities = ModelTrainer._score_for_auc(model, X_test, y_test)
 
             # --- 2. Calculate Metrics ---
             accuracy = accuracy_score(y_test, predictions)
             precision = precision_score(y_test, predictions, zero_division=0)
             recall = recall_score(y_test, predictions, zero_division=0)
             f1 = f1_score(y_test, predictions, zero_division=0)
-            roc_auc = roc_auc_score(y_test, probabilities)
+            try:
+                roc_auc = (
+                    float(roc_auc_score(y_test, probabilities))
+                    if probabilities is not None
+                    else float("nan")
+                )
+            except (ValueError, TypeError):
+                roc_auc = float("nan")
 
             metrics = {
                 "Accuracy": accuracy,
@@ -178,13 +189,24 @@ class ModelEvaluation:
                 with mlflow.start_run(run_name=trainer_artifacts.best_model_name):
                     mlflow.log_param("Algorithm", trainer_artifacts.best_model_name)
                     mlflow.set_tag("selected_model", trainer_artifacts.best_model_name)
-                    mlflow.log_param("Calibration", "Sigmoid")
+                    mlflow.log_param("dataset_version", dataset_version)
+                    mlflow.log_param("selection_metric", "validation_f1_then_roc_auc")
+                    mlflow.log_param(
+                        "selected_model", trainer_artifacts.best_model_name
+                    )
+
+                    for param_name, param_val in (tracking_parameters or {}).items():
+                        mlflow.log_param(param_name, param_val)
 
                     for param_name, param_val in best_params.items():
                         mlflow.log_param(param_name, param_val)
 
                     for metric_name, metric_val in metrics.items():
-                        mlflow.log_metric(metric_name, metric_val)
+                        if np.isfinite(metric_val):
+                            mlflow.log_metric(metric_name, metric_val)
+
+                    if comparison_path and os.path.exists(comparison_path):
+                        mlflow.log_artifact(comparison_path)
 
                     try:
                         mlflow.sklearn.log_model(
@@ -215,11 +237,16 @@ class ModelEvaluation:
                     "precision": float(metrics["Precision"]),
                     "recall": float(metrics["Recall"]),
                     "f1": float(metrics["F1 Score"]),
-                    "roc_auc": float(metrics["ROC AUC"]),
+                    "roc_auc": (
+                        float(metrics["ROC AUC"])
+                        if np.isfinite(metrics["ROC AUC"])
+                        else None
+                    ),
+                    "selected_model": trainer_artifacts.best_model_name,
+                    "confusion_matrix": cm.tolist(),
+                    "dataset_version": dataset_version,
                 }
-                saved_path = save_metrics(
-                    metrics_out, out_path="artifacts/evaluation_results.json"
-                )
+                saved_path = save_metrics(metrics_out, out_path=metrics_path)
                 logger.info(f"Saved evaluation metrics to: {saved_path}")
             except Exception:
                 logger.warning("Failed to save evaluation metrics to artifacts")

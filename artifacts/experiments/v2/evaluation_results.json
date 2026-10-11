@@ -1,0 +1,19 @@
+{
+    "accuracy": 0.8827417380660955,
+    "precision": 0.8889439762022806,
+    "recall": 0.87548828125,
+    "f1": 0.8821648216482165,
+    "roc_auc": 0.9540900566089839,
+    "selected_model": "Linear SVM",
+    "confusion_matrix": [
+        [
+            1813,
+            224
+        ],
+        [
+            255,
+            1793
+        ]
+    ],
+    "dataset_version": "clean_dataset_v2"
+}

@@ -42,13 +42,18 @@ class DataTransformationConfig:
     tfidf_path: str = TFIDF_PATH
     encoder_path: str = ENCODER_PATH
     scaler_path: str = SCALER_PATH
+    validation_size: float = 0.20
+    test_size: float = 0.20
+    random_state: int = 42
 
 
 @dataclass
 class DataTransformationArtifacts:
     X_train: Any
+    X_validation: Any
     X_test: Any
     y_train: Any
+    y_validation: Any
     y_test: Any
     tfidf: TfidfVectorizer
     category_encoder: OneHotEncoder
@@ -58,8 +63,8 @@ class DataTransformationArtifacts:
 
 class DataTransformation:
 
-    def __init__(self):
-        self.config = DataTransformationConfig()
+    def __init__(self, config: DataTransformationConfig = None):
+        self.config = config or DataTransformationConfig()
 
     def initiate_data_transformation(
         self, dataframe: pd.DataFrame
@@ -70,24 +75,41 @@ class DataTransformation:
             transformed_df = dataframe.copy()
 
             logger.info("Removing Missing Values")
+            original_row_count = len(transformed_df)
             transformed_df.dropna(inplace=True)
-
-            logger.info("Encoding Target Labels (CG -> 1, OR -> 0)")
-            transformed_df[TARGET_COLUMN] = transformed_df[TARGET_COLUMN].map(
-                {"CG": 1, "OR": 0}
+            logger.info(
+                "Dropped %s incomplete rows", original_row_count - len(transformed_df)
             )
+
+            logger.info("Normalizing verified target labels")
+            labels = transformed_df[TARGET_COLUMN]
+            if set(labels.unique()).issubset({"CG", "OR"}):
+                transformed_df[TARGET_COLUMN] = labels.map({"CG": 1, "OR": 0})
+            elif set(labels.unique()).issubset({0, 1, 0.0, 1.0}):
+                transformed_df[TARGET_COLUMN] = labels.astype(int)
+            else:
+                raise ValueError("Unsupported target labels after dataset validation")
 
             logger.info("Cleaning Review Text")
             transformed_df[CLEAN_TEXT_COLUMN] = transformed_df[TEXT_COLUMN].apply(
                 clean_text
             )
 
-            logger.info("Performing Train-Test Split")
-            train_df, test_df = train_test_split(
+            logger.info("Performing stratified train-validation-test split")
+            train_validation_df, test_df = train_test_split(
                 transformed_df,
-                test_size=0.20,
-                random_state=42,
+                test_size=self.config.test_size,
+                random_state=self.config.random_state,
                 stratify=transformed_df[TARGET_COLUMN],
+            )
+            validation_fraction = self.config.validation_size / (
+                1 - self.config.test_size
+            )
+            train_df, validation_df = train_test_split(
+                train_validation_df,
+                test_size=validation_fraction,
+                random_state=self.config.random_state,
+                stratify=train_validation_df[TARGET_COLUMN],
             )
 
             logger.info("Generating TF-IDF Features")
@@ -100,6 +122,9 @@ class DataTransformation:
 
             review_features_train = tfidf.fit_transform(train_df[CLEAN_TEXT_COLUMN])
             review_features_test = tfidf.transform(test_df[CLEAN_TEXT_COLUMN])
+            review_features_validation = tfidf.transform(
+                validation_df[CLEAN_TEXT_COLUMN]
+            )
 
             save_object(self.config.tfidf_path, tfidf)
             logger.info("TF-IDF Vectorizer Saved Successfully")
@@ -109,6 +134,9 @@ class DataTransformation:
 
             category_features_train = encoder.fit_transform(train_df[[CATEGORY_COLUMN]])
             category_features_test = encoder.transform(test_df[[CATEGORY_COLUMN]])
+            category_features_validation = encoder.transform(
+                validation_df[[CATEGORY_COLUMN]]
+            )
 
             save_object(self.config.encoder_path, encoder)
             logger.info("Category Encoder Saved Successfully")
@@ -117,6 +145,9 @@ class DataTransformation:
             scaler = MinMaxScaler()
             rating_features_train = scaler.fit_transform(train_df[[RATING_COLUMN]])
             rating_features_test = scaler.transform(test_df[[RATING_COLUMN]])
+            rating_features_validation = scaler.transform(
+                validation_df[[RATING_COLUMN]]
+            )
 
             save_object(self.config.scaler_path, scaler)
             logger.info("Rating Scaler Saved Successfully")
@@ -137,8 +168,16 @@ class DataTransformation:
                     rating_features_test,
                 ]
             )
+            X_validation = hstack(
+                [
+                    review_features_validation,
+                    category_features_validation,
+                    rating_features_validation,
+                ]
+            )
 
             y_train = train_df[TARGET_COLUMN]
+            y_validation = validation_df[TARGET_COLUMN]
             y_test = test_df[TARGET_COLUMN]
 
             logger.info(f"Training Feature Matrix Shape : {X_train.shape}")
@@ -146,8 +185,10 @@ class DataTransformation:
 
             return DataTransformationArtifacts(
                 X_train=X_train,
+                X_validation=X_validation,
                 X_test=X_test,
                 y_train=y_train,
+                y_validation=y_validation,
                 y_test=y_test,
                 tfidf=tfidf,
                 category_encoder=encoder,

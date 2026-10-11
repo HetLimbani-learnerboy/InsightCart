@@ -1,0 +1,83 @@
+{
+  "dataset_path": "data/processed/clean_dataset_v2.csv",
+  "dataset_version": "clean_dataset_v2",
+  "dataset_shape": [
+    20421,
+    5
+  ],
+  "columns": [
+    "category",
+    "rating",
+    "label",
+    "text_",
+    "review_length"
+  ],
+  "target_column": "label",
+  "target_distribution": {
+    "1": 10240,
+    "0": 10181
+  },
+  "missing_values": {
+    "category": 0,
+    "rating": 0,
+    "label": 0,
+    "text_": 0,
+    "review_length": 0
+  },
+  "duplicate_rows": 0,
+  "excluded_feature_columns": [
+    "review_length"
+  ],
+  "selected_model": "Linear SVM",
+  "primary_selection_metric": "validation F1; ROC-AUC tie-break",
+  "validation_metrics": {
+    "Accuracy": 0.8809990205680706,
+    "Precision": 0.8897205588822356,
+    "Recall": 0.87060546875,
+    "F1 Score": 0.8800592300098716,
+    "ROC AUC": 0.9543764005709726
+  },
+  "test_metrics": {
+    "Accuracy": 0.8827417380660955,
+    "Precision": 0.8889439762022806,
+    "Recall": 0.87548828125,
+    "F1 Score": 0.8821648216482165,
+    "ROC AUC": 0.9540900566089839
+  },
+  "training_configuration": {
+    "random_seed": 42,
+    "split": {
+      "train": 0.6,
+      "validation": 0.2,
+      "test": 0.2
+    },
+    "hyperparameter_tuning": false,
+    "preprocessing_fit_on": "training split only",
+    "candidate_models": [
+      "Logistic Regression",
+      "Multinomial Naive Bayes",
+      "Decision Tree",
+      "Random Forest",
+      "Linear SVM",
+      "XGBoost",
+      "LightGBM"
+    ]
+  },
+  "production_quality_gate_passed": false,
+  "production_promotion_performed": false,
+  "created_at_utc": "2026-10-11T15:25:54.721538+00:00",
+  "library_versions": {
+    "numpy": "2.5.2",
+    "pandas": "2.3.3",
+    "scikit-learn": "1.9.0",
+    "scipy": "1.18.1",
+    "xgboost": "3.4.1",
+    "lightgbm": "4.7.0",
+    "mlflow": "3.15.2"
+  },
+  "artifacts": {
+    "comparison": "artifacts/experiments/v2/model_comparison.csv",
+    "evaluation": "artifacts/experiments/v2/evaluation_results.json",
+    "selected_model": "artifacts/experiments/v2/selected_model.pkl"
+  }
+}

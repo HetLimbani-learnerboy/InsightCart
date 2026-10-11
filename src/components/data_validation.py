@@ -66,9 +66,16 @@ class DataValidation:
 
             logger.info(f"Labels : {labels}")
 
-            if not set(labels).issubset({"CG", "OR"}):
+            observed = set(labels)
+            if not (
+                observed.issubset({"CG", "OR"})
+                or observed.issubset({0, 1})
+                or observed.issubset({0.0, 1.0})
+            ):
 
-                raise ValueError("Unexpected Label Found")
+                raise ValueError(
+                    "Unexpected target labels; expected CG/OR or binary 0/1"
+                )
 
             logger.info("Dataset Validation Completed")
 

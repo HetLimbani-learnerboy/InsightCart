@@ -52,3 +52,5 @@ chrome_extension/
 
 # Environment
 .env
+
+.codex
