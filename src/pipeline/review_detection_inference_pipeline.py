@@ -28,6 +28,7 @@ from src.constants import (
     SCALER_PATH,
     TFIDF_PATH,
 )
+from src.constants import MODEL_DIR
 from src.exception import CustomException
 from src.logger import logger
 from src.utils.common import load_object
@@ -50,10 +51,21 @@ class ReviewDetectionInferencePipeline:
 
             self.config = InferenceConfig()
 
-            self.model = load_object(self.config.model_path)
-            self.vectorizer = load_object(self.config.tfidf_path)
-            self.category_encoder = load_object(self.config.encoder_path)
-            self.rating_scaler = load_object(self.config.scaler_path)
+            bundle_path = os.path.join(MODEL_DIR, "production_model_bundle.pkl")
+            if os.path.exists(bundle_path):
+                bundle = load_object(bundle_path)
+                self.model = bundle["model"]
+                self.vectorizer = bundle["tfidf"]
+                self.category_encoder = bundle["category_encoder"]
+                self.rating_scaler = bundle["rating_scaler"]
+                logger.info(
+                    "Loaded promoted model bundle: %s", bundle.get("model_name")
+                )
+            else:
+                self.model = load_object(self.config.model_path)
+                self.vectorizer = load_object(self.config.tfidf_path)
+                self.category_encoder = load_object(self.config.encoder_path)
+                self.rating_scaler = load_object(self.config.scaler_path)
 
             logger.info("Inference Artifacts Loaded Successfully")
 

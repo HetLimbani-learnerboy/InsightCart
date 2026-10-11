@@ -755,7 +755,25 @@ InsightCart/
 └── .gitignore
 ```
 
---- 
+---
+
+## Dataset v2 Model Experiment
+
+Run the isolated, non-promoting experiment from the repository root:
+
+```bash
+python src/pipeline/run_v2_experiment.py
+```
+
+Optional arguments are `--dataset`, `--output-dir`, and `--seed`. The default
+dataset is `data/processed/clean_dataset_v2.csv`; outputs are written only to
+`artifacts/experiments/v2/`. The experiment uses a stratified 60/20/20
+train/validation/test split, fits preprocessing on the training split, ranks
+models by validation F1 with ROC-AUC as a tie-breaker, and evaluates the
+selected candidate once on the untouched test split. Hyperparameter tuning is
+disabled for this comparison. It logs to the configured MLflow tracking URI,
+checks the production quality gate, and never promotes or overwrites production
+artifacts.
 
 ## Project Steps:
 
