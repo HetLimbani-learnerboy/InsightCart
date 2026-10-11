@@ -13,7 +13,6 @@ from app.config import settings
 
 from app.schemas.response import HealthResponse
 
-
 router = APIRouter(tags=["Health"])
 
 
