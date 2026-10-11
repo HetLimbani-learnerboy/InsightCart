@@ -3,4 +3,4 @@
 ['remote "localstorage"']
     url = ../dvc_storage
 ['remote "s3remote"']
-    url = s3://insightcart-mlops-dvc-2026/insightcart
+    url = s3://insightcart-project-mlops-dvc/insightcart
