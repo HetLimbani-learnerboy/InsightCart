@@ -33,7 +33,7 @@ skops
 # -------------------------
 # ML Experiment Tracking
 # -------------------------
-mlflow
+mlflow>=3.0,<4
 
 # -------------------------
 # FastAPI Backend

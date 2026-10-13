@@ -82,6 +82,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL || 'sqlite:///./test.db' }}
           MLFLOW_ALLOW_FILE_STORE: 'true'
+          MLFLOW_TRACING_ENABLED: 'false'
         run: |
           pytest -v
 

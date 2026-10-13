@@ -775,6 +775,32 @@ disabled for this comparison. It logs to the configured MLflow tracking URI,
 checks the production quality gate, and never promotes or overwrites production
 artifacts.
 
+## API Tracing
+
+MLflow 3 application traces are stored separately from training runs in the
+`InsightCart-API-Tracing` experiment. For local development, start the existing
+tracking server against the repository tracking database, then start the API:
+
+```bash
+mlflow server --backend-store-uri sqlite:///mlflow.db --host 127.0.0.1 --port 5000
+MLFLOW_TRACKING_URI=http://127.0.0.1:5000 ./venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+The prediction routes are `/api/v1/review/predict` and
+`/api/v1/review/predict/batch` with the default API prefix. Verify trace
+persistence with:
+
+```bash
+MLFLOW_TRACKING_URI=http://127.0.0.1:5000 ./venv/bin/python scripts/verify_mlflow_tracing.py
+```
+
+Open the `InsightCart-API-Tracing` experiment's **Traces** view in the MLflow
+UI. The training experiment and its metrics are unchanged. Docker Compose
+defaults to `http://host.docker.internal:5000` because `127.0.0.1` inside the
+API container refers to that container. Override `MLFLOW_DOCKER_TRACKING_URI`
+when MLflow runs at another address reachable from Docker. CI disables tracing for ordinary
+tests so they do not require an external tracking server.
+
 ## Project Steps:
 
 Based on your current progress, you've completed the Machine Learning + Core MLOps pipeline for the first AI feature.
