@@ -19,6 +19,8 @@ services:
 
     environment:
       PYTHONUNBUFFERED: "1"
+      MLFLOW_TRACKING_URI: ${MLFLOW_DOCKER_TRACKING_URI:-http://host.docker.internal:5000}
+      MLFLOW_TRACING_ENABLED: ${MLFLOW_TRACING_ENABLED:-true}
 
     restart: unless-stopped
 

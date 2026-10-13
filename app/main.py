@@ -17,6 +17,7 @@ from prometheus_client import generate_latest
 from prometheus_client import CONTENT_TYPE_LATEST
 
 from app.config import settings
+from app.tracing import configure_tracing
 
 from app.routes.health import router as health_router
 from app.routes.review_detection import router as review_router
@@ -30,6 +31,9 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
 )
+
+# Configure once before request handling; tracing setup is best effort.
+configure_tracing()
 
 app.add_middleware(PrometheusMiddleware)
 

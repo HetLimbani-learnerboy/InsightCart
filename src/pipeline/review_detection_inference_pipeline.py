@@ -33,6 +33,7 @@ from src.exception import CustomException
 from src.logger import logger
 from src.utils.common import load_object
 from src.utils.preprocessing import clean_text
+from app.tracing import set_span_outputs, traced_span
 
 
 @dataclass
@@ -58,6 +59,9 @@ class ReviewDetectionInferencePipeline:
                 self.vectorizer = bundle["tfidf"]
                 self.category_encoder = bundle["category_encoder"]
                 self.rating_scaler = bundle["rating_scaler"]
+                self.model_version = bundle.get(
+                    "model_version", bundle.get("model_name", "production-bundle")
+                )
                 logger.info(
                     "Loaded promoted model bundle: %s", bundle.get("model_name")
                 )
@@ -66,6 +70,9 @@ class ReviewDetectionInferencePipeline:
                 self.vectorizer = load_object(self.config.tfidf_path)
                 self.category_encoder = load_object(self.config.encoder_path)
                 self.rating_scaler = load_object(self.config.scaler_path)
+                self.model_version = os.path.splitext(
+                    os.path.basename(self.config.model_path)
+                )[0]
 
             logger.info("Inference Artifacts Loaded Successfully")
 
@@ -102,14 +109,52 @@ class ReviewDetectionInferencePipeline:
         try:
             logger.info("Starting Prediction Process")
 
-            self.validate_input(review, rating, category)
+            with traced_span(
+                "review.input_validation",
+                {
+                    "review_length": len(review) if isinstance(review, str) else None,
+                    "rating_valid": rating in [1, 2, 3, 4, 5],
+                    "category_present": bool(category),
+                },
+            ) as span:
+                self.validate_input(review, rating, category)
+                set_span_outputs(span, {"status": "success"})
 
-            cleaned_review = clean_text(review)
+            with traced_span(
+                "review.preprocessing",
+                {
+                    "review_length": len(review),
+                    "model_version": self.model_version,
+                },
+            ) as span:
+                cleaned_review = clean_text(review)
+                set_span_outputs(
+                    span, {"status": "success", "cleaned_length": len(cleaned_review)}
+                )
 
-            feature_vector = self.prepare_features(cleaned_review, rating, category)
+            with traced_span(
+                "review.feature_transformation",
+                {
+                    "cleaned_length": len(cleaned_review),
+                    "model_version": self.model_version,
+                },
+            ) as span:
+                feature_vector = self.prepare_features(cleaned_review, rating, category)
+                set_span_outputs(
+                    span,
+                    {"feature_count": int(feature_vector.shape[1])},
+                )
 
-            prediction = int(self.model.predict(feature_vector)[0])
-            probabilities = self.model.predict_proba(feature_vector)[0]
+            with traced_span(
+                "review.model_inference",
+                {
+                    "feature_count": int(feature_vector.shape[1]),
+                    "model_version": self.model_version,
+                },
+            ) as span:
+                prediction = int(self.model.predict(feature_vector)[0])
+                probabilities = self.model.predict_proba(feature_vector)[0]
+                set_span_outputs(span, {"status": "success", "prediction": prediction})
 
             confidence = round(float(probabilities[prediction]) * 100, 2)
 
