@@ -7,14 +7,14 @@ Purpose :
 Review Detection API Routes.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 from app.database.connection import get_db
 from app.schemas.request import BatchPredictionRequest, ReviewPredictionRequest
 from app.schemas.response import BatchPredictionResponse, ReviewPredictionResponse
 from app.services.review_service import ReviewDetectionService
-from app.tracing import set_span_outputs, traced_span
+from app.tracing import set_span_outputs, span_trace_id, traced_span, tracing_enabled
 from src.logger import logger
 
 router = APIRouter(
@@ -38,9 +38,14 @@ def get_review_service() -> ReviewDetectionService:
 )
 def predict_review(
     request: ReviewPredictionRequest,
+    response: Response,
     db: Session = Depends(get_db),
     service: ReviewDetectionService = Depends(get_review_service),
 ):
+    logger.info(
+        "Prediction request received route=/api/v1/review/predict tracing_enabled=%s review_count=1",
+        tracing_enabled(),
+    )
     with traced_span(
         "review.predict",
         {
@@ -52,6 +57,9 @@ def predict_review(
             ),
         },
     ) as span:
+        trace_id = span_trace_id(span)
+        if trace_id:
+            response.headers["X-MLflow-Trace-Id"] = trace_id
         try:
             result = service.predict_review(
                 review=request.review,
@@ -94,6 +102,7 @@ def predict_review(
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Prediction failed.",
+                headers={"X-MLflow-Trace-Id": trace_id} if trace_id else None,
             )
 
 
@@ -108,9 +117,15 @@ def predict_review(
 )
 def predict_batch(
     request: BatchPredictionRequest,
+    response: Response,
     db: Session = Depends(get_db),
     service: ReviewDetectionService = Depends(get_review_service),
 ):
+    logger.info(
+        "Prediction request received route=/api/v1/review/predict/batch tracing_enabled=%s review_count=%d",
+        tracing_enabled(),
+        len(request.reviews),
+    )
     with traced_span(
         "review.predict.batch",
         {
@@ -122,6 +137,9 @@ def predict_batch(
             ),
         },
     ) as span:
+        trace_id = span_trace_id(span)
+        if trace_id:
+            response.headers["X-MLflow-Trace-Id"] = trace_id
         try:
             result = service.predict_batch(reviews=request.reviews, db=db)
             with traced_span(
@@ -165,4 +183,5 @@ def predict_batch(
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Prediction failed.",
+                headers={"X-MLflow-Trace-Id": trace_id} if trace_id else None,
             )

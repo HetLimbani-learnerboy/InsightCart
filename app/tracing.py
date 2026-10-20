@@ -6,7 +6,7 @@ import time
 from typing import Any, Dict, Iterator, Optional
 
 import mlflow
-from mlflow.entities import SpanType
+from mlflow.entities import SpanStatus, SpanStatusCode, SpanType
 
 from src.logger import logger
 
@@ -14,9 +14,22 @@ DEFAULT_TRACKING_URI = "http://127.0.0.1:5000"
 EXPERIMENT_NAME = "InsightCart-API-Tracing"
 
 
+def tracing_enabled() -> bool:
+    return os.getenv("MLFLOW_TRACING_ENABLED", "true").lower() not in {
+        "0",
+        "false",
+        "no",
+    }
+
+
+def span_trace_id(span: Any) -> Optional[str]:
+    return getattr(span, "trace_id", None) if span is not None else None
+
+
 def configure_tracing() -> None:
     """Configure the API's tracking destination without blocking predictions."""
-    if os.getenv("MLFLOW_TRACING_ENABLED", "true").lower() in {"0", "false", "no"}:
+    if not tracing_enabled():
+        logger.info("MLflow tracing disabled")
         return
 
     os.environ.setdefault("MLFLOW_HTTP_REQUEST_MAX_RETRIES", "0")
@@ -25,8 +38,11 @@ def configure_tracing() -> None:
     try:
         mlflow.set_tracking_uri(tracking_uri)
         mlflow.set_experiment(EXPERIMENT_NAME)
+        logger.info("MLflow tracing configured experiment=%s", EXPERIMENT_NAME)
     except Exception as exc:  # Tracing setup must never prevent API startup.
-        logger.warning("MLflow tracing setup unavailable: %s", type(exc).__name__)
+        logger.warning(
+            "MLflow tracing setup unavailable error_type=%s", type(exc).__name__
+        )
 
 
 @contextmanager
@@ -35,7 +51,7 @@ def traced_span(
     inputs: Optional[Dict[str, Any]] = None,
 ) -> Iterator[Any]:
     """Create a span while ensuring MLflow errors cannot affect application flow."""
-    if os.getenv("MLFLOW_TRACING_ENABLED", "true").lower() in {"0", "false", "no"}:
+    if not tracing_enabled():
         yield None
         return
 
@@ -45,6 +61,11 @@ def traced_span(
     try:
         manager = mlflow.start_span(name=name, span_type=SpanType.CHAIN)
         span = manager.__enter__()
+        logger.info(
+            "MLflow span started name=%s trace_id=%s",
+            name,
+            span_trace_id(span) or "unavailable",
+        )
         if inputs:
             span.set_inputs(inputs)
     except Exception as exc:
@@ -53,7 +74,11 @@ def traced_span(
                 manager.__exit__(None, None, None)
             except Exception:
                 pass
-        logger.debug("MLflow span start failed: %s", type(exc).__name__)
+        logger.warning(
+            "MLflow span start failed name=%s error_type=%s",
+            name,
+            type(exc).__name__,
+        )
         span = None
         manager = None
 
@@ -62,6 +87,12 @@ def traced_span(
     except BaseException as exc:
         if span is not None:
             try:
+                span.set_status(
+                    SpanStatus(
+                        status_code=SpanStatusCode.ERROR,
+                        description=type(exc).__name__,
+                    )
+                )
                 span.set_attribute("status", "error")
                 span.set_attribute("error_type", type(exc).__name__)
                 span.set_attribute(
@@ -73,6 +104,11 @@ def traced_span(
                 manager.__exit__(None, None, None)
             except Exception:
                 pass
+            logger.info(
+                "MLflow span closed name=%s trace_id=%s status=error",
+                name,
+                span_trace_id(span) or "unavailable",
+            )
         raise
     else:
         if span is not None:
@@ -82,8 +118,17 @@ def traced_span(
                     "execution_duration_ms", (time.perf_counter() - started) * 1000
                 )
                 manager.__exit__(None, None, None)
+                logger.info(
+                    "MLflow span closed name=%s trace_id=%s status=success",
+                    name,
+                    span_trace_id(span) or "unavailable",
+                )
             except Exception as exc:
-                logger.debug("MLflow span finish failed: %s", type(exc).__name__)
+                logger.warning(
+                    "MLflow span finish failed name=%s error_type=%s",
+                    name,
+                    type(exc).__name__,
+                )
 
 
 def set_span_outputs(span: Any, outputs: Dict[str, Any]) -> None:

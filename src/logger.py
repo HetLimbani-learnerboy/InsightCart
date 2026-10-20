@@ -6,6 +6,7 @@ Purpose : Configure project logging
 
 import logging
 import os
+import sys
 from datetime import datetime
 
 LOG_DIR = "logs"
@@ -23,3 +24,13 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger("InsightCart")
+if not any(
+    isinstance(handler, logging.StreamHandler)
+    and not isinstance(handler, logging.FileHandler)
+    for handler in logger.handlers
+):
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(
+        logging.Formatter("[ %(asctime)s ] %(levelname)s | %(name)s | %(message)s")
+    )
+    logger.addHandler(console_handler)

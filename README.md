@@ -778,28 +778,71 @@ artifacts.
 ## API Tracing
 
 MLflow 3 application traces are stored separately from training runs in the
-`InsightCart-API-Tracing` experiment. For local development, start the existing
-tracking server against the repository tracking database, then start the API:
+`InsightCart-API-Tracing` experiment. Run commands from the repository root so
+the relative `sqlite:///mlflow.db` URI points to this project's existing
+`mlflow.db`. On macOS with Docker Desktop, the host MLflow process must listen
+on a Docker-reachable interface, and its Host-header allowlist must include the
+Docker Desktop hostname. This does not disable MLflow's security middleware:
 
 ```bash
-mlflow server --backend-store-uri sqlite:///mlflow.db --host 127.0.0.1 --port 5000
-MLFLOW_TRACKING_URI=http://127.0.0.1:5000 ./venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+./venv/bin/mlflow server --backend-store-uri sqlite:///mlflow.db --host 0.0.0.0 --port 5000 \
+        --allowed-hosts localhost,127.0.0.1,host.docker.internal:5000
 ```
 
-The prediction routes are `/api/v1/review/predict` and
-`/api/v1/review/predict/batch` with the default API prefix. Verify trace
-persistence with:
+Use this host binding only on a trusted development machine and restrict access
+with the host firewall. Do not expose the tracking server publicly. For local
+FastAPI execution, use `MLFLOW_TRACKING_URI=http://127.0.0.1:5000`; Docker
+Compose already overrides that with `http://host.docker.internal:5000` for the
+API container. Verify the effective setting without dumping the full
+environment:
 
 ```bash
-MLFLOW_TRACKING_URI=http://127.0.0.1:5000 ./venv/bin/python scripts/verify_mlflow_tracing.py
+docker compose exec -T insightcart-api sh -c \
+        'printf "MLFLOW_TRACING_ENABLED=%s\\n" "$MLFLOW_TRACING_ENABLED"; case "$MLFLOW_TRACKING_URI" in http://host.docker.internal:5000) echo MLFLOW_TRACKING_URI=expected;; *) echo MLFLOW_TRACKING_URI=unexpected;; esac'
+```
+
+The image copies `artifacts/` at build time; it does not pull or mount model
+files at runtime. In a clean checkout, hydrate the DVC-managed production model
+files before building (with the configured DVC remote credentials available to
+the build operator):
+
+```bash
+dvc pull artifacts/models/best_linear_svm_calibrated.pkl.dvc \
+        artifacts/models/category_encoder.pkl.dvc \
+        artifacts/models/tfidf_vectorizer.pkl.dvc
+```
+
+Rebuild and start the existing API service after backend source changes:
+
+```bash
+docker compose up --build -d insightcart-api
+curl -fsS http://localhost:8000/health
+```
+
+The extension's actual request is `POST http://localhost:8000/api/v1/review/predict/batch`
+with `{ "reviews": [...] }`. Each review includes `review` (3-5000 chars),
+`rating` (1-5), and `category`; the extractor also supplies `id`, `title`,
+`reviewer`, `date`, `verified_purchase`, and `helpful_votes`, which the request
+schema ignores when not declared. To test in Chrome, open DevTools Network,
+open a supported Amazon product or review page, open the InsightCart popup, and
+click **Analyze Reviews**. Confirm the batch URL, request JSON, and HTTP 200.
+The extension service worker console logs the route, status, and returned trace
+ID without logging review content. Backend route and trace lifecycle messages
+are available via `docker compose logs -f insightcart-api`.
+
+Copy the `X-MLflow-Trace-Id` response header from that request and query the
+same host tracking server. The verifier does not create synthetic traces:
+
+```bash
+MLFLOW_TRACKING_URI=http://127.0.0.1:5000 \
+        ./venv/bin/python scripts/verify_mlflow_tracing.py --route batch --trace-id <TRACE_ID>
 ```
 
 Open the `InsightCart-API-Tracing` experiment's **Traces** view in the MLflow
-UI. The training experiment and its metrics are unchanged. Docker Compose
-defaults to `http://host.docker.internal:5000` because `127.0.0.1` inside the
-API container refers to that container. Override `MLFLOW_DOCKER_TRACKING_URI`
-when MLflow runs at another address reachable from Docker. CI disables tracing for ordinary
-tests so they do not require an external tracking server.
+UI. For a local (non-Docker) API, start it with
+`MLFLOW_TRACKING_URI=http://127.0.0.1:5000 ./venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000`.
+CI disables tracing for ordinary tests so they do not require an external
+tracking server.
 
 ## Project Steps:
 
