@@ -8,6 +8,7 @@ from app.database.connection import get_db
 from app.main import app
 from app.routes.review_detection import get_review_service
 from app.tracing import EXPERIMENT_NAME, configure_tracing
+from mlflow.entities import SpanStatusCode
 
 
 class StubReviewService:
@@ -87,6 +88,7 @@ def test_single_prediction_creates_private_trace(local_tracing_store, api_client
 
     assert response.status_code == 200
     assert response.json()["prediction"] == 0
+    assert response.headers.get("X-MLflow-Trace-Id")
     traces = read_traces(local_tracing_store)
     trace = next(
         item
@@ -122,6 +124,7 @@ def test_batch_prediction_creates_trace_with_count_only(
 
     assert response.status_code == 200
     assert response.json()["total_reviews"] == 1
+    assert response.headers.get("X-MLflow-Trace-Id")
     traces = read_traces(local_tracing_store)
     trace = next(
         item
@@ -131,6 +134,36 @@ def test_batch_prediction_creates_trace_with_count_only(
     serialized = json.dumps([span.inputs for span in trace.data.spans], default=str)
     assert private_review not in serialized
     assert "review_count" in serialized
+
+
+def test_extension_batch_payload_matches_backend_and_has_batch_trace(
+    local_tracing_store, api_client
+):
+    extension_review = {
+        "id": "amazon-review-1",
+        "title": "Product title",
+        "review": "An extension-compatible review body.",
+        "rating": 4,
+        "category": "books",
+        "reviewer": "Reviewer name",
+        "date": "January 1, 2026",
+        "verified_purchase": True,
+        "helpful_votes": 2,
+    }
+    response = api_client.post(
+        "/api/v1/review/predict/batch",
+        json={"reviews": [extension_review]},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["total_reviews"] == 1
+    assert response.headers.get("X-MLflow-Trace-Id")
+    trace = next(
+        item
+        for item in read_traces(local_tracing_store)
+        if item.info.request_id == response.headers["X-MLflow-Trace-Id"]
+    )
+    assert any(span.name == "review.predict.batch" for span in trace.data.spans)
 
 
 def test_invalid_request_and_tracing_failure_preserve_api_behavior(
@@ -169,6 +202,7 @@ def test_model_error_trace_does_not_capture_exception_message(
 
     assert response.status_code == 500
     assert response.json()["detail"] == "Prediction failed."
+    assert response.headers.get("X-MLflow-Trace-Id")
     traces = read_traces(local_tracing_store)
     trace = next(
         item
@@ -188,3 +222,24 @@ def test_model_error_trace_does_not_capture_exception_message(
     )
     assert "TRACE_SECRET_SENTINEL" not in serialized
     assert "RuntimeError" in serialized
+    assert trace.data.spans[0].status.status_code == SpanStatusCode.ERROR
+
+
+def test_disabled_tracing_preserves_batch_api_without_trace_id(monkeypatch, api_client):
+    monkeypatch.setenv("MLFLOW_TRACING_ENABLED", "false")
+    response = api_client.post(
+        "/api/v1/review/predict/batch",
+        json={
+            "reviews": [
+                {
+                    "review": "A disabled tracing review.",
+                    "rating": 3,
+                    "category": "books",
+                }
+            ]
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["total_reviews"] == 1
+    assert "X-MLflow-Trace-Id" not in response.headers

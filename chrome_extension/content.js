@@ -1198,9 +1198,9 @@ async function extractAmazonReviews() {
         reviews: reviews
     };
 
-    console.log(
-        "InsightCart: Amazon Data Extracted:",
-        result
+    console.info(
+        "InsightCart: Amazon data extracted",
+        `review_count=${result.total_reviews}`
     );
 
     return result;

@@ -26,6 +26,33 @@ def test_metrics():
     assert response.status_code == 200
 
 
+def test_extension_origin_can_read_trace_id_header(
+    monkeypatch, prediction_dependencies
+):
+    monkeypatch.setenv("MLFLOW_TRACING_ENABLED", "false")
+    response = client.post(
+        "/api/v1/review/predict/batch",
+        json={
+            "reviews": [
+                {
+                    "review": "Extension CORS test review",
+                    "rating": 4,
+                    "category": "books",
+                }
+            ]
+        },
+        headers={
+            "Origin": "chrome-extension://insightcart-test",
+        },
+    )
+
+    assert response.status_code == 200
+    assert (
+        "x-mlflow-trace-id"
+        in response.headers.get("access-control-expose-headers", "").lower()
+    )
+
+
 class StubReviewService:
     def predict_review(self, review, rating, category, title="", db=None):
         return {

@@ -17,14 +17,26 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 })
             });
 
+            const traceId = response.headers.get("X-MLflow-Trace-Id");
             if (!response.ok) {
+                console.error(
+                    "InsightCart batch prediction failed",
+                    `route=/api/v1/review/predict/batch status=${response.status}`,
+                    `trace_id=${traceId || "unavailable"}`
+                );
                 throw new Error(`API Error: ${response.status}`);
             }
 
             const result = await response.json();
+            console.info(
+                "InsightCart batch prediction completed",
+                `route=/api/v1/review/predict/batch status=${response.status}`,
+                `trace_id=${traceId || "unavailable"}`
+            );
             sendResponse({
                 success: true,
-                data: result
+                data: result,
+                traceId
             });
         } catch (error) {
             console.error("InsightCart API Error:", error);

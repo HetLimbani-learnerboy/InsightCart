@@ -42,9 +42,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
                 );
 
-                console.log(
-                    "InsightCart extracted data:",
-                    extractedData
+                console.info(
+                    "InsightCart extraction completed",
+                    `review_count=${extractedData?.reviews?.length || 0}`
                 );
 
             } catch (error) {
