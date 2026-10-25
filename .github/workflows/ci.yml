@@ -6,72 +6,106 @@ on:
       - main
       - develop
     paths:
-      - 'app/**'
-      - 'src/**'
-      - 'tests/**'
-      - 'Dockerfile'
-      - 'docker-compose.yml'
-      - 'requirements.txt'
-      - 'monitoring/**'
-      - '.github/workflows/ci.yml'
+      - "app/**"
+      - "src/**"
+      - "tests/**"
+      - "artifacts/**"
+      - "Dockerfile"
+      - ".dockerignore"
+      - "docker-compose.yml"
+      - "requirements.txt"
+      - "monitoring/**"
+      - ".github/workflows/ci.yml"
+
   pull_request:
     branches:
       - main
+      - develop
     paths:
-      - 'app/**'
-      - 'src/**'
-      - 'tests/**'
-      - 'Dockerfile'
-      - 'docker-compose.yml'
-      - 'requirements.txt'
-      - 'monitoring/**'
-      - '.github/workflows/ci.yml'
+      - "app/**"
+      - "src/**"
+      - "tests/**"
+      - "artifacts/**"
+      - "Dockerfile"
+      - ".dockerignore"
+      - "docker-compose.yml"
+      - "requirements.txt"
+      - "monitoring/**"
+      - ".github/workflows/ci.yml"
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   test:
+    name: Lint and Test
     runs-on: ubuntu-latest
+
     env:
       DATABASE_URL: sqlite:///./test.db
       MLFLOW_TRACKING_URI: file://${{ github.workspace }}/mlruns
       MLFLOW_TRACING_ENABLED: "false"
+      PYTHONUNBUFFERED: "1"
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Python
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements.txt
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          pip install flake8
 
-      - name: Create local model fixtures for tests
+      - name: Create test model fixtures
         run: |
           python - <<'PY'
-          import os, joblib
+          import os
+          import joblib
+
           from sklearn.dummy import DummyClassifier
           from sklearn.feature_extraction.text import TfidfVectorizer
           from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
-          os.makedirs('artifacts/models', exist_ok=True)
-          model = DummyClassifier(strategy='most_frequent')
+          model_dir = "artifacts/models"
+          os.makedirs(model_dir, exist_ok=True)
+
+          model = DummyClassifier(strategy="most_frequent")
           model.fit([[0], [1]], [0, 1])
-          joblib.dump(model, 'artifacts/models/best_linear_svm_calibrated.pkl')
+          joblib.dump(
+              model,
+              os.path.join(model_dir, "best_linear_svm_calibrated.pkl"),
+          )
 
-          vec = TfidfVectorizer()
-          vec.fit(['sample text'])
-          joblib.dump(vec, 'artifacts/models/tfidf_vectorizer.pkl')
+          vectorizer = TfidfVectorizer()
+          vectorizer.fit(["sample product review", "another sample review"])
+          joblib.dump(
+              vectorizer,
+              os.path.join(model_dir, "tfidf_vectorizer.pkl"),
+          )
 
-          enc = OneHotEncoder(handle_unknown='ignore', sparse_output=True)
-          enc.fit([['unknown']])
-          joblib.dump(enc, 'artifacts/models/category_encoder.pkl')
+          encoder = OneHotEncoder(handle_unknown="ignore")
+          encoder.fit([["unknown"]])
+          joblib.dump(
+              encoder,
+              os.path.join(model_dir, "category_encoder.pkl"),
+          )
 
           scaler = StandardScaler()
-          scaler.fit([[3.0]])
-          joblib.dump(scaler, 'artifacts/models/rating_scaler.pkl')
+          scaler.fit([[3.0], [4.0]])
+          joblib.dump(
+              scaler,
+              os.path.join(model_dir, "rating_scaler.pkl"),
+          )
           PY
 
       - name: Run Flake8
@@ -82,13 +116,21 @@ jobs:
         run: |
           pytest -q
 
-      - name: Validate Docker Compose file
+      - name: Prepare local environment for Compose validation
+        run: |
+          if [ ! -f .env ]; then
+            touch .env
+          fi
+
+      - name: Validate Docker Compose
         run: |
           docker compose config --quiet
 
   docker-build:
+    name: Build Docker Image
     runs-on: ubuntu-latest
     needs: test
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -96,6 +138,11 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build Docker image locally
-        run: |
-          docker build --tag insightcart-api:ci --cache-from type=gha --cache-to type=gha,mode=max .
+      - name: Build Docker image with cache
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          tags: insightcart-api:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
