@@ -1,0 +1,5 @@
+outs:
+- md5: 69d0ba2508f6cab0e85d9f5068d182ec
+  size: 975
+  hash: md5
+  path: rating_scaler.pkl

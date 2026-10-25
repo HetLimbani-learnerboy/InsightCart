@@ -7,6 +7,7 @@ Purpose :
 Perform data preprocessing and feature engineering.
 """
 
+import hashlib
 import sys
 from dataclasses import dataclass
 from typing import Any
@@ -42,7 +43,8 @@ class DataTransformationConfig:
     tfidf_path: str = TFIDF_PATH
     encoder_path: str = ENCODER_PATH
     scaler_path: str = SCALER_PATH
-    validation_size: float = 0.20
+    validation_size: float = 0.10
+    promotion_size: float = 0.10
     test_size: float = 0.20
     random_state: int = 42
 
@@ -51,14 +53,20 @@ class DataTransformationConfig:
 class DataTransformationArtifacts:
     X_train: Any
     X_validation: Any
+    X_promotion: Any
     X_test: Any
     y_train: Any
     y_validation: Any
+    y_promotion: Any
     y_test: Any
     tfidf: TfidfVectorizer
     category_encoder: OneHotEncoder
     rating_scaler: MinMaxScaler
     transformed_dataframe: pd.DataFrame
+    promotion_dataset_id: str
+    test_dataset_id: str
+    promotion_dataframe: pd.DataFrame
+    test_dataframe: pd.DataFrame
 
 
 class DataTransformation:
@@ -95,22 +103,48 @@ class DataTransformation:
                 clean_text
             )
 
-            logger.info("Performing stratified train-validation-test split")
-            train_validation_df, test_df = train_test_split(
+            logger.info("Performing stratified train-validation-promotion-test split")
+            train_promotion_validation_df, test_df = train_test_split(
                 transformed_df,
                 test_size=self.config.test_size,
                 random_state=self.config.random_state,
                 stratify=transformed_df[TARGET_COLUMN],
             )
-            validation_fraction = self.config.validation_size / (
+            holdout_size = (self.config.validation_size + self.config.promotion_size) / (
                 1 - self.config.test_size
             )
-            train_df, validation_df = train_test_split(
-                train_validation_df,
-                test_size=validation_fraction,
+            train_df, promotion_validation_df = train_test_split(
+                train_promotion_validation_df,
+                test_size=holdout_size,
                 random_state=self.config.random_state,
-                stratify=train_validation_df[TARGET_COLUMN],
+                stratify=train_promotion_validation_df[TARGET_COLUMN],
             )
+            validation_df, promotion_df = train_test_split(
+                promotion_validation_df,
+                test_size=(
+                    self.config.promotion_size
+                    / (self.config.validation_size + self.config.promotion_size)
+                ),
+                random_state=self.config.random_state,
+                stratify=promotion_validation_df[TARGET_COLUMN],
+            )
+
+            evaluation_columns = [
+                CATEGORY_COLUMN,
+                RATING_COLUMN,
+                TARGET_COLUMN,
+                TEXT_COLUMN,
+            ]
+            promotion_dataset_id = hashlib.sha256(
+                promotion_df[evaluation_columns]
+                .to_json(orient="records", force_ascii=False)
+                .encode("utf-8")
+            ).hexdigest()
+            test_dataset_id = hashlib.sha256(
+                test_df[evaluation_columns]
+                .to_json(orient="records", force_ascii=False)
+                .encode("utf-8")
+            ).hexdigest()
 
             logger.info("Generating TF-IDF Features")
             tfidf = TfidfVectorizer(
@@ -125,6 +159,7 @@ class DataTransformation:
             review_features_validation = tfidf.transform(
                 validation_df[CLEAN_TEXT_COLUMN]
             )
+            review_features_promotion = tfidf.transform(promotion_df[CLEAN_TEXT_COLUMN])
 
             save_object(self.config.tfidf_path, tfidf)
             logger.info("TF-IDF Vectorizer Saved Successfully")
@@ -137,6 +172,9 @@ class DataTransformation:
             category_features_validation = encoder.transform(
                 validation_df[[CATEGORY_COLUMN]]
             )
+            category_features_promotion = encoder.transform(
+                promotion_df[[CATEGORY_COLUMN]]
+            )
 
             save_object(self.config.encoder_path, encoder)
             logger.info("Category Encoder Saved Successfully")
@@ -147,6 +185,9 @@ class DataTransformation:
             rating_features_test = scaler.transform(test_df[[RATING_COLUMN]])
             rating_features_validation = scaler.transform(
                 validation_df[[RATING_COLUMN]]
+            )
+            rating_features_promotion = scaler.transform(
+                promotion_df[[RATING_COLUMN]]
             )
 
             save_object(self.config.scaler_path, scaler)
@@ -175,9 +216,17 @@ class DataTransformation:
                     rating_features_validation,
                 ]
             )
+            X_promotion = hstack(
+                [
+                    review_features_promotion,
+                    category_features_promotion,
+                    rating_features_promotion,
+                ]
+            )
 
             y_train = train_df[TARGET_COLUMN]
             y_validation = validation_df[TARGET_COLUMN]
+            y_promotion = promotion_df[TARGET_COLUMN]
             y_test = test_df[TARGET_COLUMN]
 
             logger.info(f"Training Feature Matrix Shape : {X_train.shape}")
@@ -186,14 +235,20 @@ class DataTransformation:
             return DataTransformationArtifacts(
                 X_train=X_train,
                 X_validation=X_validation,
+                X_promotion=X_promotion,
                 X_test=X_test,
                 y_train=y_train,
                 y_validation=y_validation,
+                y_promotion=y_promotion,
                 y_test=y_test,
                 tfidf=tfidf,
                 category_encoder=encoder,
                 rating_scaler=scaler,
                 transformed_dataframe=transformed_df,
+                promotion_dataset_id=promotion_dataset_id,
+                test_dataset_id=test_dataset_id,
+                promotion_dataframe=promotion_df.reset_index(drop=True),
+                test_dataframe=test_df.reset_index(drop=True),
             )
 
         except Exception as e:

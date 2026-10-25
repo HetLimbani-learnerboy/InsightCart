@@ -1,3 +1,4 @@
 /best_linear_svm_calibrated.pkl
 /tfidf_vectorizer.pkl
 /category_encoder.pkl
+/rating_scaler.pkl

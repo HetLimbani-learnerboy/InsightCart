@@ -116,6 +116,7 @@ class ModelEvaluationArtifacts:
     metrics: Dict[str, float]
     classification_report: str
     confusion_matrix: np.ndarray
+    run_id: str = None
 
 
 class ModelEvaluation:
@@ -130,8 +131,10 @@ class ModelEvaluation:
         y_test: Any,
         metrics_path: str = "artifacts/evaluation_results.json",
         dataset_version: str = "production",
+        evaluation_dataset_id: str = None,
         comparison_path: str = None,
         tracking_parameters: Dict[str, Any] = None,
+        tracking_metrics: Dict[str, float] = None,
     ) -> ModelEvaluationArtifacts:
         try:
             logger.info("Model Evaluation Started")
@@ -146,9 +149,13 @@ class ModelEvaluation:
 
             # --- 2. Calculate Metrics ---
             accuracy = accuracy_score(y_test, predictions)
-            precision = precision_score(y_test, predictions, zero_division=0)
-            recall = recall_score(y_test, predictions, zero_division=0)
-            f1 = f1_score(y_test, predictions, zero_division=0)
+            precision = precision_score(
+                y_test, predictions, average="binary", zero_division=0
+            )
+            recall = recall_score(
+                y_test, predictions, average="binary", zero_division=0
+            )
+            f1 = f1_score(y_test, predictions, average="binary", zero_division=0)
             try:
                 roc_auc = (
                     float(roc_auc_score(y_test, probabilities))
@@ -178,18 +185,22 @@ class ModelEvaluation:
             # --- 4. MLflow Logging ---
             # NOTE: tracking URI is set once at module import time, honoring
             # MLFLOW_TRACKING_URI if the environment (e.g. CI) provided one.
-            # We do NOT re-set it here, and we never let MLflow logging
-            # failures take down the whole pipeline — metrics/report/cm are
-            # already computed above and are what downstream steps need.
+            # We do NOT re-set it here. Tracking failures block promotion.
+            run_id = None
             try:
                 logger.info(f"Logging Evaluation Results to MLflow at {TRACKING_URI}")
                 experiment = get_or_create_experiment(self.config.experiment_name)
                 mlflow.set_experiment(experiment_id=experiment.experiment_id)
 
-                with mlflow.start_run(run_name=trainer_artifacts.best_model_name):
+                with mlflow.start_run(run_name=trainer_artifacts.best_model_name) as run:
+                    run_id = run.info.run_id
                     mlflow.log_param("Algorithm", trainer_artifacts.best_model_name)
                     mlflow.set_tag("selected_model", trainer_artifacts.best_model_name)
                     mlflow.log_param("dataset_version", dataset_version)
+                    if evaluation_dataset_id:
+                        mlflow.log_param(
+                            "evaluation_dataset_id", evaluation_dataset_id
+                        )
                     mlflow.log_param("selection_metric", "validation_f1_then_roc_auc")
                     mlflow.log_param(
                         "selected_model", trainer_artifacts.best_model_name
@@ -204,6 +215,9 @@ class ModelEvaluation:
                     for metric_name, metric_val in metrics.items():
                         if np.isfinite(metric_val):
                             mlflow.log_metric(metric_name, metric_val)
+                    for metric_name, metric_val in (tracking_metrics or {}).items():
+                        if np.isfinite(metric_val):
+                            mlflow.log_metric(metric_name, float(metric_val))
 
                     if comparison_path and os.path.exists(comparison_path):
                         mlflow.log_artifact(comparison_path)
@@ -226,9 +240,8 @@ class ModelEvaluation:
 
                 logger.info("MLflow Experiment Logging Completed")
             except Exception as mlflow_err:
-                # MLflow tracking is observability, not the pipeline's core
-                # output. Log and continue rather than failing the whole run.
-                logger.warning(f"MLflow logging failed (non-fatal): {mlflow_err}")
+                logger.exception("MLflow evaluation logging failed")
+                raise RuntimeError("MLflow evaluation logging failed") from mlflow_err
 
             # --- 5. Save metrics to artifacts for downstream consumption ---
             try:
@@ -245,16 +258,19 @@ class ModelEvaluation:
                     "selected_model": trainer_artifacts.best_model_name,
                     "confusion_matrix": cm.tolist(),
                     "dataset_version": dataset_version,
+                    "evaluation_dataset_id": evaluation_dataset_id,
+                    "evaluation_average": "binary",
                 }
                 saved_path = save_metrics(metrics_out, out_path=metrics_path)
                 logger.info(f"Saved evaluation metrics to: {saved_path}")
-            except Exception:
-                logger.warning("Failed to save evaluation metrics to artifacts")
+            except Exception as metrics_err:
+                raise RuntimeError("Failed to persist evaluation metrics") from metrics_err
 
             evaluation_artifacts = ModelEvaluationArtifacts(
                 metrics=metrics,
                 classification_report=report,
                 confusion_matrix=cm,
+                run_id=run_id,
             )
 
             logger.info("Model Evaluation Completed Successfully")

@@ -63,7 +63,9 @@ class ReviewDetectionInferencePipeline:
                     "model_version", bundle.get("model_name", "production-bundle")
                 )
                 logger.info(
-                    "Loaded promoted model bundle: %s", bundle.get("model_name")
+                    "Loaded promoted model bundle model_name=%s model_version=%s",
+                    bundle.get("model_name"),
+                    self.model_version,
                 )
             else:
                 self.model = load_object(self.config.model_path)

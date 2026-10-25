@@ -11,6 +11,8 @@ on:
       - "tests/**"
       - "data/**"
       - "artifacts/**"
+      - "dvc.yaml"
+      - "dvc.lock"
       - "requirements.txt"
       - ".github/workflows/ml-pipeline.yml"
 
@@ -24,6 +26,8 @@ on:
       - "tests/**"
       - "data/**"
       - "artifacts/**"
+      - "dvc.yaml"
+      - "dvc.lock"
       - "requirements.txt"
       - ".github/workflows/ml-pipeline.yml"
 
@@ -90,8 +94,11 @@ jobs:
 
     if: >-
       ${{
-        github.event_name == 'workflow_dispatch' &&
-        inputs.run_training == true
+        github.event_name == 'push' ||
+        (
+          github.event_name == 'workflow_dispatch' &&
+          inputs.run_training == true
+        )
       }}
 
     env:
@@ -99,6 +106,7 @@ jobs:
       MLFLOW_TRACKING_URI: file://${{ github.workspace }}/mlruns
       MLFLOW_TRACING_ENABLED: "false"
       PYTHONUNBUFFERED: "1"
+      DVC_REMOTE_URL: ${{ secrets.DVC_REMOTE_URL }}
 
     steps:
       - name: Checkout repository
@@ -116,18 +124,34 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Verify training script and dataset availability
+      - name: Configure DVC remote
         run: |
-          test -f src/pipeline/review_detection_training_pipeline.py
-
-          if [ ! -d data ]; then
-            echo "::error::The data directory is missing."
-            echo "Provide the required training dataset before running training."
+          if [ -z "$DVC_REMOTE_URL" ]; then
+            echo "::error::DVC_REMOTE_URL repository secret is required for hosted training."
+            echo "The checked-in DVC remote is a machine-local path and cannot be reached by GitHub-hosted runners."
             exit 1
           fi
+          dvc remote modify --local localstorage url "$DVC_REMOTE_URL"
 
-          echo "Training script and data directory found."
-
-      - name: Run model training pipeline
+      - name: Pull the requested dataset version
         run: |
-          python src/pipeline/review_detection_training_pipeline.py
+          dvc pull \
+            data/raw/fake_reviews_dataset.csv.dvc \
+            artifacts/models/best_linear_svm_calibrated.pkl.dvc \
+            artifacts/models/category_encoder.pkl.dvc \
+            artifacts/models/tfidf_vectorizer.pkl.dvc \
+            artifacts/models/rating_scaler.pkl.dvc
+          test -s data/raw/fake_reviews_dataset.csv
+          test -s artifacts/models/rating_scaler.pkl
+
+      - name: Reproduce candidate pipeline
+        run: |
+          dvc repro train_candidate
+
+      - name: Upload candidate evaluation
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: insightcart-dvc-candidate
+          path: artifacts/experiments/dvc-candidate/
+          if-no-files-found: warn

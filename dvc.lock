@@ -1,0 +1,81 @@
+schema: '2.0'
+stages:
+  train_candidate:
+    cmd: python src/pipeline/run_v2_experiment.py --dataset 
+      data/raw/fake_reviews_dataset.csv --output-dir 
+      artifacts/experiments/dvc-candidate --seed 42
+    deps:
+    - path: artifacts/models/best_linear_svm_calibrated.pkl
+      hash: md5
+      md5: 46b0d5dc3c81673bec01bd47c34ccc22
+      size: 483733
+    - path: artifacts/models/category_encoder.pkl
+      hash: md5
+      md5: 2167dc2ba41ba8e68f9b6d235c0d0169
+      size: 1172
+    - path: artifacts/models/rating_scaler.pkl
+      hash: md5
+      md5: 69d0ba2508f6cab0e85d9f5068d182ec
+      size: 975
+    - path: artifacts/models/tfidf_vectorizer.pkl
+      hash: md5
+      md5: 8745b82844daefb04043f51b08e1fb63
+      size: 389223
+    - path: data/raw/fake_reviews_dataset.csv
+      hash: md5
+      md5: 8a9c90b6ef1d136b8fd891ac64cb2cab
+      size: 15324528
+    - path: requirements.txt
+      hash: md5
+      md5: ce51f1e890f5bf5ac919d161a6ee74b8
+      size: 1653
+    - path: src/components/data_ingestion.py
+      hash: md5
+      md5: 3db9136e77a85ff3c376352f5531d1af
+      size: 1109
+    - path: src/components/data_transformation.py
+      hash: md5
+      md5: 4e23cd15b44b23316130c3de275a7394
+      size: 9029
+    - path: src/components/data_validation.py
+      hash: md5
+      md5: f38d7e82d7c4d71692596a4d647ca0e7
+      size: 2395
+    - path: src/components/model_evaluation.py
+      hash: md5
+      md5: 2f255056fb1623d7b26fb8d57e0476dc
+      size: 11135
+    - path: src/components/model_trainer.py
+      hash: md5
+      md5: 1c7cfcc110a21e3003354aec02c1e4ae
+      size: 9899
+    - path: src/constants.py
+      hash: md5
+      md5: 5eaf8b7a5cd5dec529a4ca68516713ce
+      size: 868
+    - path: src/evaluation/evaluate_models.py
+      hash: md5
+      md5: 55c2ad06754ef834244999addfa6c974
+      size: 974
+    - path: src/evaluation/model_gate.py
+      hash: md5
+      md5: 4ca9ea6495920a0af7678b40c3f10a31
+      size: 3521
+    - path: src/pipeline/run_v2_experiment.py
+      hash: md5
+      md5: bbd2b50151df5e34b2d8bb95920c9706
+      size: 14158
+    - path: src/utils/common.py
+      hash: md5
+      md5: 070784e670058faa1e2b2e27868817cc
+      size: 807
+    - path: src/utils/preprocessing.py
+      hash: md5
+      md5: ba399e9efd1ac8778ee9fdedf6773880
+      size: 1782
+    outs:
+    - path: artifacts/experiments/dvc-candidate
+      hash: md5
+      md5: fcdfa045ef1ec6425c92031e7125383a.dir
+      size: 1109727
+      nfiles: 7
