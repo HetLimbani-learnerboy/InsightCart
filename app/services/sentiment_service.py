@@ -190,11 +190,14 @@ class SentimentService:
         Resolve a model output index to a sentiment label.
         """
 
-        id2label = getattr(
-            model.config,
-            "id2label",
-            {},
-        ) or {}
+        id2label = (
+            getattr(
+                model.config,
+                "id2label",
+                {},
+            )
+            or {}
+        )
 
         raw_label = id2label.get(
             index,
@@ -210,9 +213,7 @@ class SentimentService:
         if 0 <= index < len(FALLBACK_LABELS):
             return FALLBACK_LABELS[index]
 
-        raise ValueError(
-            f"Unsupported sentiment class index: {index}"
-        )
+        raise ValueError(f"Unsupported sentiment class index: {index}")
 
     def _predict(self, review: str) -> Dict[str, Any]:
         """
@@ -235,10 +236,7 @@ class SentimentService:
         )
 
         # Ensure all input tensors are on the same device as the model.
-        encoded = {
-            key: value.to(self._device)
-            for key, value in encoded.items()
-        }
+        encoded = {key: value.to(self._device) for key, value in encoded.items()}
 
         # Serialize inference against the shared model.
         with self._inference_lock:
@@ -269,22 +267,13 @@ class SentimentService:
             confidence = float(probability.item())
 
             # Validate confidence scores.
-            if (
-                not math.isfinite(confidence)
-                or not 0.0 <= confidence <= 1.0
-            ):
-                raise ValueError(
-                    "Model returned an invalid confidence score."
-                )
+            if not math.isfinite(confidence) or not 0.0 <= confidence <= 1.0:
+                raise ValueError("Model returned an invalid confidence score.")
 
-            scores.append(
-                (label, confidence)
-            )
+            scores.append((label, confidence))
 
         if not scores:
-            raise ValueError(
-                "Model returned no sentiment scores."
-            )
+            raise ValueError("Model returned no sentiment scores.")
 
         # Select the label with the highest probability.
         label, confidence = max(
@@ -351,16 +340,13 @@ class SentimentService:
             raise
 
         except Exception as error:
-            logger.exception(
-                "Local sentiment inference failed"
-            )
+            logger.exception("Local sentiment inference failed")
 
             raise SentimentServiceError(
                 status_code=503,
                 code="sentiment_inference_failed",
                 public_message=(
-                    "Local sentiment analysis failed. "
-                    "Check the backend logs."
+                    "Local sentiment analysis failed. " "Check the backend logs."
                 ),
             ) from error
 
@@ -383,9 +369,7 @@ class SentimentService:
                 public_message="Sentiment analysis is disabled.",
             )
 
-        semaphore = asyncio.Semaphore(
-            max(1, concurrency)
-        )
+        semaphore = asyncio.Semaphore(max(1, concurrency))
 
         async def analyze_one(
             review: str,
@@ -415,9 +399,7 @@ class SentimentService:
                     }
 
                 except Exception:
-                    logger.exception(
-                        "Unexpected batch sentiment error"
-                    )
+                    logger.exception("Unexpected batch sentiment error")
 
                     return {
                         "available": False,
@@ -426,9 +408,4 @@ class SentimentService:
                     }
 
         # Preserve the order of the input reviews.
-        return await asyncio.gather(
-            *(
-                analyze_one(review)
-                for review in reviews
-            )
-        )
+        return await asyncio.gather(*(analyze_one(review) for review in reviews))

@@ -50,11 +50,15 @@ class DataValidation:
 
             original_count = len(dataframe)
             dataframe = dataframe.dropna(subset=self.config.required_columns).copy()
-            logger.info("Dropped incomplete required rows: %d", original_count - len(dataframe))
+            logger.info(
+                "Dropped incomplete required rows: %d", original_count - len(dataframe)
+            )
 
             before_deduplication = len(dataframe)
             dataframe = dataframe.drop_duplicates().reset_index(drop=True)
-            logger.info("Dropped duplicate rows: %d", before_deduplication - len(dataframe))
+            logger.info(
+                "Dropped duplicate rows: %d", before_deduplication - len(dataframe)
+            )
             if dataframe.empty:
                 raise ValueError("Dataset has no complete records after validation")
 
@@ -69,15 +73,11 @@ class DataValidation:
 
             observed = set(labels)
             valid_binary_labels = (
-                observed == {"CG", "OR"}
-                or observed == {0, 1}
-                or observed == {0.0, 1.0}
+                observed == {"CG", "OR"} or observed == {0, 1} or observed == {0.0, 1.0}
             )
             if not valid_binary_labels:
 
-                raise ValueError(
-                    "Expected both target classes as CG/OR or binary 0/1"
-                )
+                raise ValueError("Expected both target classes as CG/OR or binary 0/1")
 
             logger.info("Dataset Validation Completed")
 

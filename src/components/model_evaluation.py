@@ -192,15 +192,15 @@ class ModelEvaluation:
                 experiment = get_or_create_experiment(self.config.experiment_name)
                 mlflow.set_experiment(experiment_id=experiment.experiment_id)
 
-                with mlflow.start_run(run_name=trainer_artifacts.best_model_name) as run:
+                with mlflow.start_run(
+                    run_name=trainer_artifacts.best_model_name
+                ) as run:
                     run_id = run.info.run_id
                     mlflow.log_param("Algorithm", trainer_artifacts.best_model_name)
                     mlflow.set_tag("selected_model", trainer_artifacts.best_model_name)
                     mlflow.log_param("dataset_version", dataset_version)
                     if evaluation_dataset_id:
-                        mlflow.log_param(
-                            "evaluation_dataset_id", evaluation_dataset_id
-                        )
+                        mlflow.log_param("evaluation_dataset_id", evaluation_dataset_id)
                     mlflow.log_param("selection_metric", "validation_f1_then_roc_auc")
                     mlflow.log_param(
                         "selected_model", trainer_artifacts.best_model_name
@@ -264,7 +264,9 @@ class ModelEvaluation:
                 saved_path = save_metrics(metrics_out, out_path=metrics_path)
                 logger.info(f"Saved evaluation metrics to: {saved_path}")
             except Exception as metrics_err:
-                raise RuntimeError("Failed to persist evaluation metrics") from metrics_err
+                raise RuntimeError(
+                    "Failed to persist evaluation metrics"
+                ) from metrics_err
 
             evaluation_artifacts = ModelEvaluationArtifacts(
                 metrics=metrics,

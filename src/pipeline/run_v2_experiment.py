@@ -280,24 +280,29 @@ def run_experiment(
         )
         promotion_performed = True
         gate_reason = "candidate passed validation and explicit promotion completed"
-        promotion_decision.update({
-            "decision": "promoted",
-            "promotion_performed": True,
-            "reason": gate_reason,
-        })
+        promotion_decision.update(
+            {
+                "decision": "promoted",
+                "promotion_performed": True,
+                "reason": gate_reason,
+            }
+        )
         with open(promotion_decision_path, "w", encoding="utf-8") as decision_file:
             json.dump(promotion_decision, decision_file, indent=2, allow_nan=False)
     elif promote:
         gate_reason = f"promotion blocked: {gate_reason}"
 
-    promotion_decision.update({
-        "decision": (
-            "promoted" if promotion_performed else
-            "eligible_not_requested" if gate_passed else "rejected"
-        ),
-        "promotion_performed": promotion_performed,
-        "reason": gate_reason,
-    })
+    promotion_decision.update(
+        {
+            "decision": (
+                "promoted"
+                if promotion_performed
+                else "eligible_not_requested" if gate_passed else "rejected"
+            ),
+            "promotion_performed": promotion_performed,
+            "reason": gate_reason,
+        }
+    )
     with open(promotion_decision_path, "w", encoding="utf-8") as decision_file:
         json.dump(promotion_decision, decision_file, indent=2, allow_nan=False)
 
@@ -373,7 +378,9 @@ def run_experiment(
     }
     try:
         metadata["git_commit_sha"] = subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], cwd=project_root, text=True,
+            ["git", "rev-parse", "HEAD"],
+            cwd=project_root,
+            text=True,
             stderr=subprocess.DEVNULL,
         ).strip()
     except (OSError, subprocess.CalledProcessError):
@@ -396,11 +403,11 @@ def run_experiment(
             client.set_tag(
                 evaluation.run_id,
                 "promotion_decision",
-                "promoted"
-                if promotion_performed
-                else "rejected"
-                if promote
-                else "candidate_only",
+                (
+                    "promoted"
+                    if promotion_performed
+                    else "rejected" if promote else "candidate_only"
+                ),
             )
             client.set_tag(evaluation.run_id, "promotion_reason", gate_reason)
             client.set_tag(

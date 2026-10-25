@@ -54,7 +54,10 @@ def test_maps_model_config_labels(index, expected):
 
 
 def test_cardiffnlp_preprocessing_replaces_mentions_and_urls():
-    assert preprocess_cardiffnlp_text("Thanks @alice https://example.com") == "Thanks @user http"
+    assert (
+        preprocess_cardiffnlp_text("Thanks @alice https://example.com")
+        == "Thanks @user http"
+    )
 
 
 def test_analyze_uses_worker_thread_and_returns_model_prediction(monkeypatch):
@@ -100,9 +103,7 @@ def test_sentiment_endpoint_enforces_configured_length(sentiment_override, monke
     from app.routes import sentiment as sentiment_routes
 
     monkeypatch.setattr(sentiment_routes.settings, "HF_SENTIMENT_MAX_LENGTH", 5)
-    response = client.post(
-        "/api/v1/sentiment/analyze", json={"review": "x" * 6}
-    )
+    response = client.post("/api/v1/sentiment/analyze", json={"review": "x" * 6})
     assert response.status_code == 422
     assert response.json()["detail"]["code"] == "review_too_long"
 
@@ -153,6 +154,12 @@ def test_authenticity_contract_is_unchanged():
 
     assert response.status_code == 200
     assert set(response.json()) == {
-        "title", "prediction", "review_type", "confidence", "category",
-        "rating", "clean_review", "reason",
+        "title",
+        "prediction",
+        "review_type",
+        "confidence",
+        "category",
+        "rating",
+        "clean_review",
+        "reason",
     }
