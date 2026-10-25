@@ -710,23 +710,132 @@ InsightCart/
 
 ---
 
-## Dataset v2 Model Experiment
+## Reproducible Candidate Training
 
-Run the isolated, non-promoting experiment from the repository root:
+The DVC `train_candidate` stage uses the DVC-tracked raw CSV and writes all
+candidate files under `artifacts/experiments/dvc-candidate/`. It does not touch
+production model files. Repeated `dvc repro` runs reuse the stage cache while
+its dataset and code dependencies remain unchanged. The preprocessing stage
+drops incomplete required rows and exact duplicate records before splitting;
+the stratified 60/10/10/20 train/validation/promotion/test split fits TF-IDF,
+category encoding, and rating scaling on training rows only. Evaluation reports
+binary precision, recall, and F1,
+accuracy, confusion matrix, dataset SHA-256, and a fingerprint of the held-out
+records.
 
 ```bash
-python src/pipeline/run_v2_experiment.py
+dvc status
+dvc pull data/raw/fake_reviews_dataset.csv.dvc
+sha256sum data/raw/fake_reviews_dataset.csv
+dvc repro train_candidate
 ```
 
-Optional arguments are `--dataset`, `--output-dir`, and `--seed`. The default
-dataset is `data/processed/clean_dataset_v2.csv`; outputs are written only to
-`artifacts/experiments/v2/`. The experiment uses a stratified 60/20/20
-train/validation/test split, fits preprocessing on the training split, ranks
-models by validation F1 with ROC-AUC as a tie-breaker, and evaluates the
-selected candidate once on the untouched test split. Hyperparameter tuning is
-disabled for this comparison. It logs to the configured MLflow tracking URI,
-checks the production quality gate, and never promotes or overwrites production
-artifacts.
+For an isolated run without DVC caching, use
+`python src/pipeline/run_v2_experiment.py --dataset data/raw/fake_reviews_dataset.csv`.
+Candidate selection uses validation F1 with ROC-AUC as a tie-breaker; the
+selected candidate is evaluated once on the held-out test split. The test set
+is not used for model selection. MLflow logging failures block a successful
+evaluation record. Metrics and candidate metadata are stored in the training
+experiment, separate from the API tracing experiment.
+
+Promotion is evaluated on a dedicated promotion holdout, separate from both
+the candidate-selection validation split and the final test split. The final
+test set is reported once and is not used for promotion decisions.
+Production promotion is opt-in and requires `--promote`. The active production
+model is evaluated on the same promotion rows as the candidate. The gate fails
+closed unless all four metrics are available, the evaluation identity matches,
+and the candidate strictly improves the configured primary metric. Metric
+floors default to `0` and are technical defaults,
+not approved business requirements; configure `MODEL_MIN_ACCURACY`,
+`MODEL_MIN_PRECISION`, `MODEL_MIN_RECALL`, `MODEL_MIN_F1`,
+`MODEL_PRIMARY_METRIC` (default `f1`), and `MODEL_MINIMUM_IMPROVEMENT` after
+confirming acceptable false-positive/false-negative costs. A single held-out
+score is not a statistical reliability guarantee.
+
+```bash
+MODEL_MIN_F1=0.90 MODEL_MINIMUM_IMPROVEMENT=0.01 \
+        python src/pipeline/run_v2_experiment.py --promote
+```
+
+This command reruns training and only promotes after the gate passes. The API
+loads `artifacts/models/production_model_bundle.pkl` when present; verify the
+loaded `model_version` in the API startup log. A rejected candidate leaves the
+bundle and its checksum unchanged.
+
+After an approved local promotion, record the new production artifact versions
+and upload them to the configured DVC remote before sharing that model with a
+clean checkout:
+
+```bash
+dvc add artifacts/models/production_model_bundle.pkl \
+        artifacts/models/best_linear_svm_calibrated.pkl \
+        artifacts/models/category_encoder.pkl \
+        artifacts/models/tfidf_vectorizer.pkl \
+        artifacts/models/rating_scaler.pkl
+dvc push
+```
+
+The approved bundle is the API activation artifact; the separate DVC update is
+the versioned distribution step. Keep the `.dvc` pointer updates in the same
+review as the promotion decision.
+
+### Audit and Promotion Commands
+
+Check the current dataset and DVC state, then run the cached candidate stage:
+
+```bash
+dvc status
+shasum -a 256 data/raw/fake_reviews_dataset.csv
+dvc repro train_candidate
+```
+
+Inspect candidate and same-holdout production metrics in
+`artifacts/experiments/dvc-candidate/model_metadata.json` and
+`evaluation_results.json`. Query recent training runs from the local MLflow
+database:
+
+```bash
+MLFLOW_TRACKING_URI=sqlite:///mlflow.db ./venv/bin/python -c \
+        'import mlflow; mlflow.set_tracking_uri("sqlite:///mlflow.db"); e=mlflow.get_experiment_by_name("InsightCart AI Generated Review Detection"); print(mlflow.search_runs([e.experiment_id])[ ["status", "metrics.Accuracy", "metrics.Precision", "metrics.Recall", "metrics.F1 Score", "tags.promotion_decision", "tags.promotion_reason"] ].to_string(index=False) if e else "No training experiment")'
+```
+
+To try promotion explicitly, first record the current production bundle checksum,
+then run into a separate candidate directory. The command re-evaluates the
+active model on the promotion holdout and only activates a candidate that passes
+the configured gate:
+
+```bash
+shasum -a 256 artifacts/models/production_model_bundle.pkl 2>/dev/null || true
+MODEL_MIN_ACCURACY=0 MODEL_MIN_PRECISION=0 MODEL_MIN_RECALL=0 MODEL_MIN_F1=0 \
+        MODEL_PRIMARY_METRIC=f1 MODEL_MINIMUM_IMPROVEMENT=0.01 \
+        ./venv/bin/python src/pipeline/run_v2_experiment.py \
+                --dataset data/raw/fake_reviews_dataset.csv \
+                --output-dir artifacts/experiments/manual-candidate --promote
+shasum -a 256 artifacts/models/production_model_bundle.pkl 2>/dev/null || true
+```
+
+For a rejected candidate, the before/after bundle checksums must match. Confirm
+the active version without exposing the serialized model contents:
+
+```bash
+./venv/bin/python -c 'import os, joblib; p="artifacts/models/production_model_bundle.pkl"; print(joblib.load(p).get("model_version", "bundle") if os.path.exists(p) else "legacy:" + os.path.basename("artifacts/models/best_linear_svm_calibrated.pkl"))'
+```
+
+If no promoted bundle exists, the API uses the legacy DVC-tracked model,
+vectorizer, encoder, and scaler files. The API logs `model_name` and
+`model_version` when loading a promoted bundle. In CI, training is blocked until the repository has a
+reachable `DVC_REMOTE_URL` secret; GitHub Actions has not been run remotely as
+part of this local audit.
+
+### Hosted Training Prerequisite
+
+The checked-in DVC remote is local (`../dvc_storage`) and cannot be reached by
+GitHub-hosted runners. Push-triggered and manual training require a repository
+secret named `DVC_REMOTE_URL` pointing to an accessible DVC remote. Configure
+any provider-specific authentication as GitHub secrets/environment variables.
+The workflow pulls the tracked raw dataset, runs `dvc repro train_candidate`,
+and uploads candidate results; it never promotes or commits model artifacts.
+Without that remote configuration, hosted training is intentionally blocked.
 
 ## API Tracing
 

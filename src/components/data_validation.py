@@ -48,17 +48,18 @@ class DataValidation:
 
             logger.info("All Required Columns Found")
 
-            logger.info("Checking Missing Values")
+            original_count = len(dataframe)
+            dataframe = dataframe.dropna(subset=self.config.required_columns).copy()
+            logger.info("Dropped incomplete required rows: %d", original_count - len(dataframe))
 
-            missing_values = dataframe.isnull().sum()
+            before_deduplication = len(dataframe)
+            dataframe = dataframe.drop_duplicates().reset_index(drop=True)
+            logger.info("Dropped duplicate rows: %d", before_deduplication - len(dataframe))
+            if dataframe.empty:
+                raise ValueError("Dataset has no complete records after validation")
 
-            logger.info(f"\n{missing_values}")
-
-            logger.info("Checking Duplicate Records")
-
-            duplicate_count = dataframe.duplicated().sum()
-
-            logger.info(f"Duplicate Rows : {duplicate_count}")
+            if not dataframe[RATING_COLUMN].between(1, 5).all():
+                raise ValueError("Ratings must be between 1 and 5")
 
             logger.info("Checking Target Labels")
 
@@ -67,14 +68,15 @@ class DataValidation:
             logger.info(f"Labels : {labels}")
 
             observed = set(labels)
-            if not (
-                observed.issubset({"CG", "OR"})
-                or observed.issubset({0, 1})
-                or observed.issubset({0.0, 1.0})
-            ):
+            valid_binary_labels = (
+                observed == {"CG", "OR"}
+                or observed == {0, 1}
+                or observed == {0.0, 1.0}
+            )
+            if not valid_binary_labels:
 
                 raise ValueError(
-                    "Unexpected target labels; expected CG/OR or binary 0/1"
+                    "Expected both target classes as CG/OR or binary 0/1"
                 )
 
             logger.info("Dataset Validation Completed")

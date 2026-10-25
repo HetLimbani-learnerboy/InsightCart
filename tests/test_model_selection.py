@@ -58,8 +58,38 @@ def test_invalid_targets_are_rejected():
         }
     )
 
-    with pytest.raises(Exception, match="Unexpected target labels"):
+    with pytest.raises(Exception, match="Expected both target classes"):
         DataValidation().validate_dataset(dataframe)
+
+
+def test_single_class_dataset_is_rejected():
+    dataframe = pd.DataFrame(
+        {
+            "category": ["books", "games"],
+            "rating": [4, 5],
+            "label": [0, 0],
+            "text_": ["book review", "game review"],
+        }
+    )
+
+    with pytest.raises(Exception, match="Expected both target classes"):
+        DataValidation().validate_dataset(dataframe)
+
+
+def test_validation_drops_incomplete_and_duplicate_rows_before_splitting():
+    dataframe = pd.DataFrame(
+        {
+            "category": ["books", "books", "games", "games"],
+            "rating": [4, 4, 5, 5],
+            "label": [0, 0, 1, None],
+            "text_": ["same review", "same review", "game review", "incomplete"],
+        }
+    )
+
+    validated = DataValidation().validate_dataset(dataframe)
+
+    assert len(validated) == 2
+    assert validated["text_"].tolist() == ["same review", "game review"]
 
 
 def test_best_model_is_selected_by_validation_and_keeps_its_estimator():
@@ -118,11 +148,27 @@ def test_missing_model_dependency_is_reported_as_failed_candidate():
     assert "optional package is not installed" in failure["Error"]
 
 
-def test_quality_gate_accepts_equal_baseline_and_rejects_lower_or_missing():
-    assert model_quality_gate({"f1": 0.91}, {"f1": 0.91})
-    assert not model_quality_gate({"f1": 0.90}, {"f1": 0.91})
-    assert not model_quality_gate({"f1": 0.95}, None)
-    assert not model_quality_gate({"f1": float("nan")}, {"f1": 0.90})
+def test_quality_gate_requires_matching_evaluation_and_candidate_improvement(
+    monkeypatch,
+):
+    monkeypatch.setenv("MODEL_MIN_PRECISION", "0.90")
+    production = {
+        "accuracy": 0.90,
+        "precision": 0.90,
+        "recall": 0.90,
+        "f1": 0.90,
+        "evaluation_dataset_id": "heldout-1",
+    }
+    candidate = {**production, "f1": 0.91}
+
+    assert model_quality_gate(candidate, production)
+    assert not model_quality_gate(production, production)
+    assert not model_quality_gate(candidate, None)
+    assert not model_quality_gate(
+        {**candidate, "evaluation_dataset_id": "different-heldout"}, production
+    )
+    assert not model_quality_gate({**candidate, "precision": 0.89}, production)
+    assert not model_quality_gate({**candidate, "f1": float("nan")}, production)
 
 
 def test_preprocessors_and_splits_can_be_written_only_to_experiment_directory(
@@ -156,8 +202,11 @@ def test_preprocessors_and_splits_can_be_written_only_to_experiment_directory(
     result = DataTransformation(config).initiate_data_transformation(dataframe)
 
     assert result.X_train.shape[0] == 24
-    assert result.X_validation.shape[0] == 8
+    assert result.X_validation.shape[0] == 4
+    assert result.X_promotion.shape[0] == 4
     assert result.X_test.shape[0] == 8
+    assert len(result.promotion_dataset_id) == 64
+    assert len(result.test_dataset_id) == 64
     assert all((tmp_path / name).exists() for name in paths)
     assert result.X_train.shape[1] == len(result.tfidf.vocabulary_) + 2 + 1
 
@@ -215,9 +264,23 @@ def test_promoted_bundle_is_the_bundle_loaded_for_inference(tmp_path, monkeypatc
     assert loaded_pipeline.vectorizer == "vectorizer"
     assert loaded_pipeline.category_encoder == "encoder"
     assert loaded_pipeline.rating_scaler == "scaler"
+    assert loaded_pipeline.model_version == "Chosen Candidate"
 
 
-def test_v2_experiment_keeps_outputs_out_of_production_paths(tmp_path, monkeypatch):
+@pytest.mark.parametrize(
+    ("promote", "gate_passed", "failure_stage"),
+    [
+        (False, False, None),
+        (True, False, None),
+        (True, True, None),
+        (True, True, "production_evaluation"),
+        (True, True, "training"),
+        (True, True, "evaluation"),
+    ],
+)
+def test_v2_experiment_promotes_only_when_explicit_and_approved(
+    tmp_path, monkeypatch, promote, gate_passed, failure_stage
+):
     from src.pipeline import run_v2_experiment as experiment
 
     dataset = pd.DataFrame(
@@ -232,6 +295,11 @@ def test_v2_experiment_keeps_outputs_out_of_production_paths(tmp_path, monkeypat
     project_root = tmp_path / "project"
     production_dir = project_root / "artifacts"
     production_dir.mkdir(parents=True)
+    production_model_dir = production_dir / "models"
+    production_model_dir.mkdir()
+    production_bundle = production_model_dir / "production_model_bundle.pkl"
+    production_bundle.write_bytes(b"existing-production-bundle")
+    original_bundle = production_bundle.read_bytes()
     production_metrics = production_dir / "production_metrics.json"
     production_metrics.write_text('{"f1": 0.9}', encoding="utf-8")
     original_metrics = production_metrics.read_bytes()
@@ -259,13 +327,19 @@ def test_v2_experiment_keeps_outputs_out_of_production_paths(tmp_path, monkeypat
             return SimpleNamespace(
                 X_train=np.ones((2, 1)),
                 X_validation=np.ones((2, 1)),
+                X_promotion=np.ones((2, 1)),
                 X_test=np.ones((2, 1)),
                 y_train=np.array([0, 1]),
                 y_validation=np.array([0, 1]),
+                y_promotion=np.array([0, 1]),
                 y_test=np.array([0, 1]),
                 tfidf="vectorizer",
                 category_encoder="encoder",
                 rating_scaler="scaler",
+                promotion_dataset_id="heldout-fixture",
+                test_dataset_id="test-fixture",
+                promotion_dataframe=dataset,
+                test_dataframe=dataset,
             )
 
     class FakeTrainer:
@@ -274,6 +348,8 @@ def test_v2_experiment_keeps_outputs_out_of_production_paths(tmp_path, monkeypat
             self.models = {"Candidate": object()}
 
         def initiate_model_training(self, *args):
+            if failure_stage == "training":
+                raise RuntimeError("training fixture failure")
             pd.DataFrame([{"Model": "Candidate", "Status": "success"}]).to_csv(
                 self.config.comparison_path, index=False
             )
@@ -291,6 +367,8 @@ def test_v2_experiment_keeps_outputs_out_of_production_paths(tmp_path, monkeypat
 
     class FakeEvaluation:
         def initiate_model_evaluation(self, *args, metrics_path, **kwargs):
+            if failure_stage == "evaluation":
+                raise RuntimeError("evaluation fixture failure")
             metrics_path_obj = tmp_path / metrics_path
             metrics_path_obj.parent.mkdir(parents=True, exist_ok=True)
             metrics_path_obj.write_text("{}", encoding="utf-8")
@@ -310,16 +388,88 @@ def test_v2_experiment_keeps_outputs_out_of_production_paths(tmp_path, monkeypat
     monkeypatch.setattr(experiment, "DataTransformation", FakeTransformation)
     monkeypatch.setattr(experiment, "ModelTrainer", FakeTrainer)
     monkeypatch.setattr(experiment, "ModelEvaluation", FakeEvaluation)
-    monkeypatch.setattr(experiment, "model_quality_gate", lambda *args, **kwargs: False)
+    production_metrics_fixture = {
+        "accuracy": 0.90,
+        "precision": 0.90,
+        "recall": 0.90,
+        "f1": 0.90,
+        "evaluation_dataset_id": "heldout-fixture",
+        "model_version": "production-fixture-v1",
+    }
+
+    def evaluate_production_fixture(dataframe):
+        if failure_stage == "production_evaluation":
+            raise RuntimeError("production_evaluation fixture failure")
+        return dict(production_metrics_fixture)
+
+    monkeypatch.setattr(
+        experiment,
+        "evaluate_production_model",
+        evaluate_production_fixture,
+    )
+    promotion_calls = []
+
+    class FakePusher:
+        def initiate_model_pusher(self, *args, **kwargs):
+            promotion_calls.append((args, kwargs))
+            return "fixture-production-bundle"
+
+    monkeypatch.setattr(experiment, "ModelPusher", FakePusher)
+    monkeypatch.setattr(
+        experiment,
+        "evaluate_model_quality",
+        lambda *args, **kwargs: (
+            gate_passed,
+            "fixture approval" if gate_passed else "fixture rejection",
+        ),
+    )
     monkeypatch.setattr(experiment, "package_versions", lambda: {})
 
+    dataset_path = tmp_path / "synthetic.csv"
+    dataset_path.write_text("fixture", encoding="utf-8")
+    if failure_stage:
+        with pytest.raises(RuntimeError, match=f"{failure_stage} fixture failure"):
+            experiment.run_experiment(
+                str(dataset_path), str(output_dir), random_seed=7, promote=promote
+            )
+        assert not promotion_calls
+        assert production_bundle.read_bytes() == original_bundle
+        assert production_metrics.read_bytes() == original_metrics
+        return
+
     _, _, metadata = experiment.run_experiment(
-        "synthetic.csv", str(output_dir), random_seed=7
+        str(dataset_path), str(output_dir), random_seed=7, promote=promote
     )
 
-    assert metadata["production_promotion_performed"] is False
+    expected_promotion = promote and gate_passed
+    assert metadata["production_promotion_performed"] is expected_promotion
+    assert len(promotion_calls) == int(expected_promotion)
     assert metadata["training_configuration"]["random_seed"] == 7
+    assert production_bundle.read_bytes() == original_bundle
     assert production_metrics.read_bytes() == original_metrics
-    assert not (production_dir / "models").exists()
     assert (output_dir / "selected_model.pkl").exists()
     assert (output_dir / "model_metadata.json").exists()
+
+
+def test_quality_gate_passes_only_with_configured_metric_floors_and_improvement():
+    from src.evaluation.model_gate import evaluate_model_quality
+
+    baseline = {
+        "accuracy": 0.90,
+        "precision": 0.90,
+        "recall": 0.90,
+        "f1": 0.90,
+        "evaluation_dataset_id": "same-heldout-set",
+    }
+    candidate = {**baseline, "accuracy": 0.92, "f1": 0.92}
+    thresholds = {metric: 0.85 for metric in ("accuracy", "precision", "recall", "f1")}
+
+    passed, reason = evaluate_model_quality(
+        candidate,
+        baseline,
+        thresholds=thresholds,
+        minimum_improvement=0.01,
+    )
+
+    assert passed
+    assert "passed" in reason

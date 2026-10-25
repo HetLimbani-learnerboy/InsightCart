@@ -38,6 +38,7 @@ class ModelPusher:
         trainer_artifacts,
         evaluation_metrics: dict = None,
         transformation_artifacts=None,
+        model_version: str = None,
     ):
         try:
             logger.info("Saving Trained Model")
@@ -52,6 +53,8 @@ class ModelPusher:
                     "category_encoder": transformation_artifacts.category_encoder,
                     "rating_scaler": transformation_artifacts.rating_scaler,
                     "model_name": trainer_artifacts.best_model_name,
+                    "model_version": model_version or trainer_artifacts.best_model_name,
+                    "evaluation_metrics": evaluation_metrics,
                 }
                 bundle_path = os.path.join(
                     os.path.dirname(self.config.model_path),
@@ -68,15 +71,21 @@ class ModelPusher:
                 finally:
                     if os.path.exists(temporary_path):
                         os.remove(temporary_path)
-                save_object(self.config.tfidf_path, transformation_artifacts.tfidf)
-                save_object(
-                    self.config.encoder_path,
-                    transformation_artifacts.category_encoder,
-                )
-                save_object(
-                    self.config.scaler_path, transformation_artifacts.rating_scaler
-                )
-                save_object(self.config.model_path, trainer_artifacts.trained_model)
+                try:
+                    save_object(self.config.tfidf_path, transformation_artifacts.tfidf)
+                    save_object(
+                        self.config.encoder_path,
+                        transformation_artifacts.category_encoder,
+                    )
+                    save_object(
+                        self.config.scaler_path, transformation_artifacts.rating_scaler
+                    )
+                    save_object(self.config.model_path, trainer_artifacts.trained_model)
+                except Exception as legacy_artifact_error:
+                    logger.warning(
+                        "Promoted bundle is active; legacy artifact refresh failed: %s",
+                        type(legacy_artifact_error).__name__,
+                    )
 
             logger.info(f"Model Saved Successfully : {self.config.model_path}")
 
@@ -87,8 +96,8 @@ class ModelPusher:
 
                     prod_metrics_path = "artifacts/production_metrics.json"
                     os.makedirs(os.path.dirname(prod_metrics_path), exist_ok=True)
-                    with open(prod_metrics_path, "w") as f:
-                        json.dump(evaluation_metrics, f, indent=4)
+                    with open(prod_metrics_path, "w", encoding="utf-8") as metrics_file:
+                        json.dump(evaluation_metrics, metrics_file, indent=4)
                     logger.info(f"Production metrics saved to: {prod_metrics_path}")
                 except Exception:
                     logger.warning("Failed to save production metrics file")
