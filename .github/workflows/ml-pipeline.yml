@@ -1,57 +1,70 @@
-name: InsightCart Local ML Pipeline
+name: InsightCart ML Pipeline
 
 on:
   push:
     branches:
       - main
+      - develop
     paths:
-      - 'app/**'
-      - 'src/**'
-      - 'data/**'
-      - 'artifacts/**'
-      - 'requirements.txt'
-      - '.github/workflows/ml-pipeline.yml'
+      - "app/**"
+      - "src/**"
+      - "tests/**"
+      - "data/**"
+      - "artifacts/**"
+      - "requirements.txt"
+      - ".github/workflows/ml-pipeline.yml"
+
   pull_request:
     branches:
       - main
+      - develop
     paths:
-      - 'app/**'
-      - 'src/**'
-      - 'data/**'
-      - 'artifacts/**'
-      - 'requirements.txt'
-      - '.github/workflows/ml-pipeline.yml'
+      - "app/**"
+      - "src/**"
+      - "tests/**"
+      - "data/**"
+      - "artifacts/**"
+      - "requirements.txt"
+      - ".github/workflows/ml-pipeline.yml"
+
   workflow_dispatch:
+    inputs:
+      run_training:
+        description: "Run the model training pipeline"
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
 
 jobs:
-  local-ml-pipeline:
+  validate:
+    name: Validate ML Pipeline
     runs-on: ubuntu-latest
+
     env:
       DATABASE_URL: sqlite:///./test.db
       MLFLOW_TRACKING_URI: file://${{ github.workspace }}/mlruns
       MLFLOW_TRACING_ENABLED: "false"
+      PYTHONUNBUFFERED: "1"
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Python
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements.txt
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-
-      - name: Restore local DVC artifacts if present
-        run: |
-          if [ -d ../dvc_storage ]; then
-            dvc remote list
-            dvc pull -r localstorage || echo 'Local DVC remote is configured but artifact pull is unavailable; continuing with local workspace data.'
-          else
-            echo 'No local DVC remote found at ../dvc_storage; continuing with repository artifacts if present.'
-          fi
+          pip install flake8
 
       - name: Run Flake8
         run: |
@@ -61,10 +74,60 @@ jobs:
         run: |
           pytest -q
 
-      - name: Run local training pipeline if the repository artifacts are available
+      - name: Validate training pipeline script
         run: |
           if [ -f src/pipeline/review_detection_training_pipeline.py ]; then
-            python src/pipeline/review_detection_training_pipeline.py
+            echo "Training pipeline script found."
           else
-            echo 'Training pipeline script not present; local CI validation completed.'
+            echo "::error::Expected training pipeline script was not found."
+            exit 1
           fi
+
+  train:
+    name: Train Model
+    runs-on: ubuntu-latest
+    needs: validate
+
+    if: >-
+      ${{
+        github.event_name == 'workflow_dispatch' &&
+        inputs.run_training == true
+      }}
+
+    env:
+      DATABASE_URL: sqlite:///./test.db
+      MLFLOW_TRACKING_URI: file://${{ github.workspace }}/mlruns
+      MLFLOW_TRACING_ENABLED: "false"
+      PYTHONUNBUFFERED: "1"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Verify training script and dataset availability
+        run: |
+          test -f src/pipeline/review_detection_training_pipeline.py
+
+          if [ ! -d data ]; then
+            echo "::error::The data directory is missing."
+            echo "Provide the required training dataset before running training."
+            exit 1
+          fi
+
+          echo "Training script and data directory found."
+
+      - name: Run model training pipeline
+        run: |
+          python src/pipeline/review_detection_training_pipeline.py
