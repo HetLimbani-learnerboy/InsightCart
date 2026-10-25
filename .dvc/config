@@ -1,4 +1,6 @@
 [core]
-    remote = localstorage
+    remote = storage
 ['remote "localstorage"']
     url = ../dvc_storage
+['remote "storage"']
+    url = s3://insightcart-dvc-artifacts-unique

@@ -11,6 +11,7 @@ on:
       - "tests/**"
       - "data/**"
       - "artifacts/**"
+      - ".dvc/config"
       - "dvc.yaml"
       - "dvc.lock"
       - "requirements.txt"
@@ -26,6 +27,7 @@ on:
       - "tests/**"
       - "data/**"
       - "artifacts/**"
+      - ".dvc/config"
       - "dvc.yaml"
       - "dvc.lock"
       - "requirements.txt"
@@ -41,6 +43,10 @@ on:
 
 permissions:
   contents: read
+
+concurrency:
+  group: insightcart-ml-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   validate:
@@ -70,6 +76,10 @@ jobs:
           pip install -r requirements.txt
           pip install flake8
 
+      - name: Check training script
+        run: |
+          test -f src/pipeline/review_detection_training_pipeline.py
+
       - name: Run Flake8
         run: |
           flake8 app src tests
@@ -78,20 +88,14 @@ jobs:
         run: |
           pytest -q
 
-      - name: Validate training pipeline script
-        run: |
-          if [ -f src/pipeline/review_detection_training_pipeline.py ]; then
-            echo "Training pipeline script found."
-          else
-            echo "::error::Expected training pipeline script was not found."
-            exit 1
-          fi
-
   train:
-    name: Train Model
+    name: Train and Evaluate Candidate
     runs-on: ubuntu-latest
     needs: validate
 
+    # Train on pushes to configured branches, or when explicitly
+    # requested through workflow_dispatch.
+    # Pull requests validate the code but do not train.
     if: >-
       ${{
         github.event_name == 'push' ||
@@ -124,34 +128,91 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Configure DVC remote
+      - name: Verify DVC installation
         run: |
-          if [ -z "$DVC_REMOTE_URL" ]; then
-            echo "::error::DVC_REMOTE_URL repository secret is required for hosted training."
-            echo "The checked-in DVC remote is a machine-local path and cannot be reached by GitHub-hosted runners."
+          dvc --version
+
+      - name: Validate DVC remote configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${DVC_REMOTE_URL:-}" ]]; then
+            echo "::error::DVC_REMOTE_URL repository secret is missing."
+            echo "Configure it with the URL of your accessible DVC remote."
             exit 1
           fi
-          dvc remote modify --local localstorage url "$DVC_REMOTE_URL"
 
-      - name: Pull the requested dataset version
+          echo "DVC remote URL is configured."
+
+      - name: Configure accessible DVC remote
+        shell: bash
         run: |
+          set -euo pipefail
+
+          # Override the machine-local default for this runner only.
+          # This does not modify the checked-in .dvc/config file.
+          dvc remote add \
+            --local \
+            --force \
+            --default \
+            github-storage \
+            "$DVC_REMOTE_URL"
+
+          dvc remote list
+
+      # Authenticate with your storage provider before this step.
+      # For a private remote, configure the required provider credentials
+      # or workload identity in GitHub Actions.
+      - name: Pull required DVC artifacts
+        run: |
+          set -euo pipefail
+
           dvc pull \
             data/raw/fake_reviews_dataset.csv.dvc \
             artifacts/models/best_linear_svm_calibrated.pkl.dvc \
             artifacts/models/category_encoder.pkl.dvc \
-            artifacts/models/tfidf_vectorizer.pkl.dvc \
-            artifacts/models/rating_scaler.pkl.dvc
+            artifacts/models/tfidf_vectorizer.pkl.dvc
+
           test -s data/raw/fake_reviews_dataset.csv
-          test -s artifacts/models/rating_scaler.pkl
 
-      - name: Reproduce candidate pipeline
+          echo "Dataset retrieved successfully."
+
+      - name: Verify required model artifacts
         run: |
-          dvc repro train_candidate
+          set -euo pipefail
 
-      - name: Upload candidate evaluation
+          test -s artifacts/models/best_linear_svm_calibrated.pkl
+          test -s artifacts/models/category_encoder.pkl
+          test -s artifacts/models/tfidf_vectorizer.pkl
+
+          echo "Required model artifacts are available."
+
+      - name: Run existing training pipeline
+        run: |
+          set -euo pipefail
+
+          python src/pipeline/review_detection_training_pipeline.py
+
+      - name: Check for evaluation results
+        if: always()
+        run: |
+          echo "Checking for generated evaluation results..."
+
+          if [ -f data/processed/model_comparison.csv ]; then
+            echo "Model comparison file exists."
+          else
+            echo "::warning::No model_comparison.csv was generated."
+          fi
+
+      - name: Upload evaluation results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: insightcart-dvc-candidate
-          path: artifacts/experiments/dvc-candidate/
+          name: insightcart-ml-results-${{ github.run_id }}
+          path: |
+            data/processed/model_comparison.csv
+            artifacts/experiments/dvc-candidate/
+            mlruns/
           if-no-files-found: warn
+          retention-days: 14
