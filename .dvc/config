@@ -1,6 +1,4 @@
 [core]
-    remote = s3remote
+    remote = localstorage
 ['remote "localstorage"']
     url = ../dvc_storage
-['remote "s3remote"']
-    url = s3://insightcart-project-mlops-dvc/insightcart

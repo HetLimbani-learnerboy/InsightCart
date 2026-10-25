@@ -5,15 +5,34 @@ on:
     branches:
       - main
       - develop
+    paths:
+      - 'app/**'
+      - 'src/**'
+      - 'tests/**'
+      - 'Dockerfile'
+      - 'docker-compose.yml'
+      - 'requirements.txt'
+      - 'monitoring/**'
+      - '.github/workflows/ci.yml'
   pull_request:
     branches:
       - main
+    paths:
+      - 'app/**'
+      - 'src/**'
+      - 'tests/**'
+      - 'Dockerfile'
+      - 'docker-compose.yml'
+      - 'requirements.txt'
+      - 'monitoring/**'
+      - '.github/workflows/ci.yml'
 
 jobs:
   test:
     runs-on: ubuntu-latest
     env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL || 'sqlite:///./test.db' }}
+      DATABASE_URL: sqlite:///./test.db
+      MLFLOW_TRACKING_URI: file://${{ github.workspace }}/mlruns
       MLFLOW_TRACING_ENABLED: "false"
     steps:
       - name: Checkout repository
@@ -29,7 +48,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Create placeholder artifacts for tests
+      - name: Create local model fixtures for tests
         run: |
           python - <<'PY'
           import os, joblib
@@ -38,24 +57,18 @@ jobs:
           from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
           os.makedirs('artifacts/models', exist_ok=True)
-
-          # Dummy model
           model = DummyClassifier(strategy='most_frequent')
-          # fit on minimal data
           model.fit([[0], [1]], [0, 1])
           joblib.dump(model, 'artifacts/models/best_linear_svm_calibrated.pkl')
 
-          # TF-IDF vectorizer
           vec = TfidfVectorizer()
           vec.fit(['sample text'])
           joblib.dump(vec, 'artifacts/models/tfidf_vectorizer.pkl')
 
-          # Category encoder
           enc = OneHotEncoder(handle_unknown='ignore', sparse_output=True)
           enc.fit([['unknown']])
           joblib.dump(enc, 'artifacts/models/category_encoder.pkl')
 
-          # Rating scaler
           scaler = StandardScaler()
           scaler.fit([[3.0]])
           joblib.dump(scaler, 'artifacts/models/rating_scaler.pkl')
@@ -67,7 +80,11 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest -v
+          pytest -q
+
+      - name: Validate Docker Compose file
+        run: |
+          docker compose config --quiet
 
   docker-build:
     runs-on: ubuntu-latest
@@ -76,6 +93,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Build Docker image
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image locally
         run: |
-          docker build -t insightcart-api:test .
+          docker build --tag insightcart-api:ci --cache-from type=gha --cache-to type=gha,mode=max .

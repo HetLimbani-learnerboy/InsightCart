@@ -15,9 +15,9 @@
 
 Instead of manually reading hundreds or thousands of reviews, users can instantly understand the strengths, weaknesses, overall sentiment, and trustworthiness of a product. The extension extracts reviews from the current shopping page and sends them to an AI backend that performs multiple analyses, including review summarization, fake review detection, topic extraction, sentiment analysis, and personalized buying recommendations.
 
-Unlike a traditional machine learning application, InsightCart is designed as an end-to-end production-ready MLOps project. It includes automated model training, experiment tracking, model versioning, containerized deployment, continuous integration and deployment (CI/CD), monitoring, and cloud deployment on AWS.
+Unlike a traditional machine learning application, InsightCart is designed as an end-to-end local MLOps project. It includes automated model training, experiment tracking, model versioning, containerized deployment, continuous integration, monitoring, and local Docker orchestration without requiring any cloud credentials or hosted infrastructure.
 
-The goal of the project is not only to build an intelligent shopping assistant but also to demonstrate the complete lifecycle of developing, deploying, monitoring, and maintaining machine learning systems in production.
+The goal of the project is to demonstrate the complete lifecycle of developing, deploying, monitoring, and maintaining a machine learning application locally on a MacBook using Docker Compose, MLflow, DVC, Prometheus, and Grafana.
 
 ---
 
@@ -48,10 +48,10 @@ The primary objectives of InsightCart are:
 -  Perform sentiment analysis on customer opinions. 
 -  Recommend whether a product is worth purchasing. 
 -  Build an end-to-end MLOps pipeline. 
--  Demonstrate production deployment using Docker and AWS. 
+-  Run the application locally with Docker Compose. 
 -  Track machine learning experiments using MLflow. 
--  Automate deployment using GitHub Actions. 
--  Monitor deployed models and APIs. 
+-  Automate local validation with GitHub Actions. 
+-  Monitor deployed models and APIs with Prometheus and Grafana. 
 
 ---
 
@@ -278,10 +278,6 @@ Docker
 
 ↓
 
-AWS Deployment
-
-↓
-
 Monitoring
 
 ────────────────────────────────────────────
@@ -289,39 +285,39 @@ Monitoring
 
 ---
 
-# Technology Stack
+# Local Technology Stack
 
 ## Frontend
 
--  React 
--  Vite 
--  Tailwind CSS 
--  JavaScript 
--  Chrome Extension Manifest V3 
+-  React
+-  Vite
+-  Tailwind CSS
+-  JavaScript
+-  Chrome Extension Manifest V3
 
 ---
 
 ## Backend
 
--  FastAPI 
--  Python 
--  Pydantic 
--  Uvicorn 
+-  FastAPI
+-  Python
+-  Pydantic
+-  Uvicorn
 
 ---
 
 ## Database
 
--  PostgreSQL 
--  Neon PostgreSQL (Free Tier) 
+-  SQLite for the default local app configuration
+-  Optional PostgreSQL or Neon database when a project-specific external DB is configured
 
 Stores:
 
--  Product Information 
--  Review History 
--  User Feedback 
--  Prediction Results 
--  Model Metadata 
+-  Product information
+-  Review history
+-  User feedback
+-  Prediction results
+-  Model metadata
 
 ---
 
@@ -485,13 +481,13 @@ Package the model using Docker.
 
 ### Step 7
 
-Deploy to AWS.
+Run the local Docker Compose stack on your MacBook.
 
 ↓
 
 ### Step 8
 
-Monitor production.
+Monitor production with Prometheus and Grafana.
 
 ↓
 
@@ -551,17 +547,17 @@ Store:
 
 # Docker
 
-Every component will run inside Docker containers.
+The project runs locally with Docker Compose.
 
 Containers include:
 
--  Backend API 
--  PostgreSQL (for local development) 
--  MLflow 
--  Prometheus 
--  Grafana 
+-  FastAPI backend
+-  MLflow tracking server
+-  Prometheus
+-  Grafana
+-  Optional local PostgreSQL or external database configuration
 
-Docker Compose will orchestrate all services for local development.
+Docker Compose orchestrates the local MLOps stack for development and validation.
 
 ---
 
@@ -569,71 +565,28 @@ Docker Compose will orchestrate all services for local development.
 
 Whenever code is pushed to GitHub:
 
-1.  Install dependencies. 
-2.  Run linting. 
-3.  Execute unit tests. 
-4.  Build Docker images. 
-5.  Run integration tests. 
-6.  (Learning phase) Push image to Amazon ECR. 
-7.  (Learning phase) Deploy to EC2. 
-8.  Restart containers automatically. 
-
-After learning AWS deployment, you can disable the deployment step while keeping the workflow file for demonstration.
+1.  Install dependencies.
+2.  Run linting.
+3.  Execute unit tests.
+4.  Validate the Docker configuration.
+5.  Build the Docker image locally on the runner.
+6.  Report failures clearly without any cloud credentials or deployment steps.
 
 ---
 
-# AWS Services
+# Local Monitoring
 
-## Amazon EC2
+## Prometheus
 
--  Host the FastAPI backend 
--  Run Docker containers 
--  Serve API requests 
+Prometheus scrapes the FastAPI metrics endpoint with the service name and port from the Docker network.
 
----
+## Grafana
 
-## Amazon ECR (Optional)
+Grafana connects to Prometheus as its datasource and persists dashboards locally in Docker volumes.
 
--  Store Docker images 
--  Pull the latest image during deployment 
+## MLflow
 
----
-
-## Amazon S3 (Optional)
-
-Store:
-
--  Trained models 
--  Dataset snapshots 
--  Logs 
--  Reports 
-
----
-
-## AWS IAM
-
-Manage secure access and permissions for deployment.
-
----
-
-## CloudWatch
-
-Monitor:
-
--  CPU usage 
--  Memory 
--  Application logs 
--  Error rates 
-
----
-
-## Security Groups
-
-Restrict access to:
-
--  API 
--  SSH 
--  Monitoring endpoints 
+MLflow stores experiment metadata and trace data locally in the configured tracking store, which can be SQLite or a local file-backed directory.
 
 ---
 
@@ -1077,19 +1030,7 @@ Build Docker
 
 Push Image
 
-↓
-
-(Optional) Deploy to EC2
-🚀 Phase 9: AWS
-
-Deploy
-
-EC2
-ECR
-S3 (DVC Remote)
-IAM
-CloudWatch
-🚀 Phase 10: Monitoring
+🚀 Phase 9: Monitoring
 
 Integrate
 
@@ -1162,9 +1103,6 @@ Docker
         │
         ▼
 GitHub Actions
-        │
-        ▼
-AWS Deployment
         │
         ▼
 Prometheus + Grafana

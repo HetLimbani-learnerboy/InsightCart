@@ -1,14 +1,35 @@
-name: InsightCart ML Pipeline
+name: InsightCart Local ML Pipeline
 
 on:
   push:
     branches:
       - main
+    paths:
+      - 'app/**'
+      - 'src/**'
+      - 'data/**'
+      - 'artifacts/**'
+      - 'requirements.txt'
+      - '.github/workflows/ml-pipeline.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'app/**'
+      - 'src/**'
+      - 'data/**'
+      - 'artifacts/**'
+      - 'requirements.txt'
+      - '.github/workflows/ml-pipeline.yml'
   workflow_dispatch:
 
 jobs:
-  ml-pipeline:
+  local-ml-pipeline:
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: sqlite:///./test.db
+      MLFLOW_TRACKING_URI: file://${{ github.workspace }}/mlruns
+      MLFLOW_TRACING_ENABLED: "false"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -22,82 +43,28 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install dvc-s3
 
-      - name: Configure AWS Credentials on Runner
-        env:
-          AWS_KEY: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      - name: Restore local DVC artifacts if present
         run: |
-          mkdir -p ~/.aws
-          cat <<EOF > ~/.aws/credentials
-          [default]
-          aws_access_key_id = $AWS_KEY
-          aws_secret_access_key = $AWS_SECRET
-          EOF
-
-          cat <<EOF > ~/.aws/config
-          [default]
-          region = ap-south-1
-          output = json
-          EOF
-
-      - name: Pull DVC Raw Data
-        run: |
-          dvc pull data/raw/fake_reviews_dataset.csv.dvc || dvc pull data/raw/ || true
-
-      - name: Create placeholder artifacts for tests
-        run: |
-          python - <<'PY'
-          import os, joblib
-          from sklearn.dummy import DummyClassifier
-          from sklearn.feature_extraction.text import TfidfVectorizer
-          from sklearn.preprocessing import OneHotEncoder, StandardScaler
-
-          os.makedirs('artifacts/models', exist_ok=True)
-          os.makedirs('data/processed', exist_ok=True)
-
-          model = DummyClassifier(strategy='most_frequent')
-          model.fit([[0], [1]], [0, 1])
-          joblib.dump(model, 'artifacts/models/best_linear_svm_calibrated.pkl')
-
-          vec = TfidfVectorizer()
-          vec.fit(['sample text'])
-          joblib.dump(vec, 'artifacts/models/tfidf_vectorizer.pkl')
-
-          enc = OneHotEncoder(handle_unknown='ignore', sparse_output=True)
-          enc.fit([['unknown']])
-          joblib.dump(enc, 'artifacts/models/category_encoder.pkl')
-
-          scaler = StandardScaler()
-          scaler.fit([[3.0]])
-          joblib.dump(scaler, 'artifacts/models/rating_scaler.pkl')
-          PY
+          if [ -d ../dvc_storage ]; then
+            dvc remote list
+            dvc pull -r localstorage || echo 'Local DVC remote is configured but artifact pull is unavailable; continuing with local workspace data.'
+          else
+            echo 'No local DVC remote found at ../dvc_storage; continuing with repository artifacts if present.'
+          fi
 
       - name: Run Flake8
         run: |
-          flake8 app src
+          flake8 app src tests
 
       - name: Run tests
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL || 'sqlite:///./test.db' }}
-          MLFLOW_ALLOW_FILE_STORE: 'true'
-          MLFLOW_TRACING_ENABLED: 'false'
         run: |
-          pytest -v
+          pytest -q
 
-      - name: Run InsightCart Training Pipeline
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL || 'sqlite:///./test.db' }}
-          MLFLOW_TRACKING_URI: "file://${{ github.workspace }}/mlruns"
-          MLFLOW_ALLOW_FILE_STORE: 'true'
+      - name: Run local training pipeline if the repository artifacts are available
         run: |
-          python src/pipeline/review_detection_training_pipeline.py
-
-      - name: Show evaluation metrics
-        run: |
-          cat artifacts/evaluation_results.json
-
-      - name: Show model comparison
-        run: |
-          cat data/processed/model_comparison.csv
+          if [ -f src/pipeline/review_detection_training_pipeline.py ]; then
+            python src/pipeline/review_detection_training_pipeline.py
+          else
+            echo 'Training pipeline script not present; local CI validation completed.'
+          fi
