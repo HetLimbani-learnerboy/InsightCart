@@ -64,3 +64,5 @@ mlruns/
 artifacts/mlruns/
 
 .codex
+
+.venv

@@ -8,6 +8,7 @@ Application Entry Point.
 """
 
 import uvicorn
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,12 +18,22 @@ from prometheus_client import generate_latest
 from prometheus_client import CONTENT_TYPE_LATEST
 
 from app.config import settings
+from app.database.init_db import init_db
 from app.tracing import configure_tracing
 
 from app.routes.health import router as health_router
 from app.routes.review_detection import router as review_router
+from app.routes.sentiment import router as sentiment_router
 
 from app.middleware.prometheus import PrometheusMiddleware
+
+
+@asynccontextmanager
+async def lifespan(_app):
+    # Review prediction endpoints persist results, so ensure the database schema
+    # exists before the app starts accepting requests.
+    init_db()
+    yield
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -30,6 +41,7 @@ app = FastAPI(
     description=settings.DESCRIPTION,
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
 # Configure once before request handling; tracing setup is best effort.
@@ -50,6 +62,7 @@ app.add_middleware(
 # Include Routers
 app.include_router(health_router, prefix="")
 app.include_router(review_router, prefix=settings.API_PREFIX)
+app.include_router(sentiment_router, prefix=settings.API_PREFIX)
 
 
 @app.get("/", tags=["Home"])
