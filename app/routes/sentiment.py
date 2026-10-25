@@ -83,9 +83,7 @@ async def analyze_sentiment(
         result = await service.analyze(review)
 
     except SentimentServiceError as error:
-        SENTIMENT_REQUEST_COUNT.labels(
-            outcome="error"
-        ).inc()
+        SENTIMENT_REQUEST_COUNT.labels(outcome="error").inc()
 
         logger.warning(
             "Single sentiment analysis failed: %s",
@@ -95,13 +93,9 @@ async def analyze_sentiment(
         _raise_sentiment_error(error)
 
     except Exception as error:
-        SENTIMENT_REQUEST_COUNT.labels(
-            outcome="error"
-        ).inc()
+        SENTIMENT_REQUEST_COUNT.labels(outcome="error").inc()
 
-        logger.exception(
-            "Unexpected error during single sentiment analysis"
-        )
+        logger.exception("Unexpected error during single sentiment analysis")
 
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -113,9 +107,7 @@ async def analyze_sentiment(
 
     duration = time.perf_counter() - started
 
-    SENTIMENT_REQUEST_COUNT.labels(
-        outcome="success"
-    ).inc()
+    SENTIMENT_REQUEST_COUNT.labels(outcome="success").inc()
 
     SENTIMENT_REQUEST_LATENCY.observe(duration)
 
@@ -156,17 +148,13 @@ async def analyze_sentiment_batch(
         _raise_sentiment_error(error)
 
     except Exception as error:
-        logger.exception(
-            "Unexpected error during batch sentiment analysis"
-        )
+        logger.exception("Unexpected error during batch sentiment analysis")
 
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "code": "sentiment_batch_internal_error",
-                "message": (
-                    "Batch sentiment analysis failed unexpectedly."
-                ),
+                "message": ("Batch sentiment analysis failed unexpectedly."),
             },
         ) from error
 

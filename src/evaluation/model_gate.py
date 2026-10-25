@@ -63,7 +63,10 @@ def evaluate_model_quality(
         if not 0 <= candidate_value <= 1 or not 0 <= production_value <= 1:
             return False, f"{metric} metric must be between 0 and 1"
         if candidate_value < threshold:
-            return False, f"candidate {metric} {candidate_value:.4f} is below {threshold:.4f}"
+            return (
+                False,
+                f"candidate {metric} {candidate_value:.4f} is below {threshold:.4f}",
+            )
         values[metric] = (candidate_value, production_value)
 
     candidate_primary, production_primary = values[primary_metric]

@@ -110,9 +110,9 @@ class DataTransformation:
                 random_state=self.config.random_state,
                 stratify=transformed_df[TARGET_COLUMN],
             )
-            holdout_size = (self.config.validation_size + self.config.promotion_size) / (
-                1 - self.config.test_size
-            )
+            holdout_size = (
+                self.config.validation_size + self.config.promotion_size
+            ) / (1 - self.config.test_size)
             train_df, promotion_validation_df = train_test_split(
                 train_promotion_validation_df,
                 test_size=holdout_size,
@@ -186,9 +186,7 @@ class DataTransformation:
             rating_features_validation = scaler.transform(
                 validation_df[[RATING_COLUMN]]
             )
-            rating_features_promotion = scaler.transform(
-                promotion_df[[RATING_COLUMN]]
-            )
+            rating_features_promotion = scaler.transform(promotion_df[[RATING_COLUMN]])
 
             save_object(self.config.scaler_path, scaler)
             logger.info("Rating Scaler Saved Successfully")
