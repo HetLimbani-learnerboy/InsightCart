@@ -40,7 +40,7 @@ class ModelTrainerConfig:
             "LightGBM",
         ]
     )
-    comparison_path: str = "data/processed/model_comparison.csv"
+    comparison_path: str = "artifacts/experiments/manual-candidate/model_comparison.csv"
 
 
 @dataclass
@@ -98,6 +98,12 @@ class ModelTrainer:
             self.models["LightGBM"] = None
             self.dependency_errors["LightGBM"] = f"LightGBM unavailable: {error}"
         logger.info("Model Trainer Initialized")
+
+    @staticmethod
+    def _parameters(estimator):
+        if estimator is None or not hasattr(estimator, "get_params"):
+            return "{}"
+        return str(estimator.get_params(deep=False))
 
     @staticmethod
     def _score_for_auc(model, features, labels):
@@ -167,6 +173,15 @@ class ModelTrainer:
                     results.append(
                         {
                             "Model": model_name,
+                            "algorithm": model_name,
+                            "parameters": self._parameters(estimator),
+                            "training_status": "success",
+                            "error_message": "",
+                            "validation_accuracy": metrics["Accuracy"],
+                            "validation_precision": metrics["Precision"],
+                            "validation_recall": metrics["Recall"],
+                            "validation_f1": metrics["F1 Score"],
+                            "validation_roc_auc": roc_auc,
                             **metrics,
                             "Confusion Matrix": confusion_matrix(
                                 y_validation, predictions
@@ -184,6 +199,15 @@ class ModelTrainer:
                     results.append(
                         {
                             "Model": model_name,
+                            "algorithm": model_name,
+                            "parameters": self._parameters(estimator),
+                            "training_status": "failed",
+                            "error_message": f"{type(error).__name__}: {error}",
+                            "validation_accuracy": np.nan,
+                            "validation_precision": np.nan,
+                            "validation_recall": np.nan,
+                            "validation_f1": np.nan,
+                            "validation_roc_auc": np.nan,
                             "Accuracy": np.nan,
                             "Precision": np.nan,
                             "Recall": np.nan,

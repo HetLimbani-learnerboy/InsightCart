@@ -1,0 +1,97 @@
+{
+  "dataset_path": "fake_reviews_dataset.csv",
+  "dataset_version": "dd49c3b4931af457349c110537da741bb8f2a4200fb9f1dcf4ff21ac6af6c45a",
+  "dataset_fingerprint": "dd49c3b4931af457349c110537da741bb8f2a4200fb9f1dcf4ff21ac6af6c45a",
+  "promotion_dataset_id": "bfd917fa5a9df48bcd683fa17cb9dfa5e2fc3f3b915a7626f84948a8d0eaffcc",
+  "test_dataset_id": "9933b452c2f335cca97274193bbc75ca071f5f7cf8c3f4b0740c8e3fd9d1d3dc",
+  "dataset_shape": [
+    40416,
+    4
+  ],
+  "columns": [
+    "category",
+    "rating",
+    "label",
+    "text_"
+  ],
+  "target_column": "label",
+  "target_distribution": {
+    "OR": 20214,
+    "CG": 20202
+  },
+  "missing_values": {
+    "category": 0,
+    "rating": 0,
+    "label": 0,
+    "text_": 0
+  },
+  "duplicate_rows": 0,
+  "excluded_feature_columns": [],
+  "selected_model": "Linear SVM",
+  "primary_selection_metric": "validation F1; ROC-AUC tie-break",
+  "validation_metrics": {
+    "Accuracy": 0.8982925018559762,
+    "Precision": 0.9044746103569633,
+    "Recall": 0.8905940594059406,
+    "F1 Score": 0.8974806684958843,
+    "ROC AUC": 0.9638312569505342
+  },
+  "test_metrics": {
+    "Accuracy": 0.8998020781791193,
+    "Precision": 0.9013664596273292,
+    "Recall": 0.8977975748577085,
+    "F1 Score": 0.899578477560129,
+    "ROC AUC": 0.962663309536318
+  },
+  "training_configuration": {
+    "random_seed": 42,
+    "split": {
+      "train": 0.6,
+      "validation": 0.1,
+      "promotion": 0.1,
+      "test": 0.2
+    },
+    "hyperparameter_tuning": false,
+    "preprocessing_fit_on": "training split only",
+    "candidate_models": [
+      "Logistic Regression",
+      "Multinomial Naive Bayes",
+      "Decision Tree",
+      "Random Forest",
+      "Linear SVM",
+      "XGBoost",
+      "LightGBM"
+    ]
+  },
+  "production_quality_gate_passed": false,
+  "production_quality_gate_reason": "candidate f1 improvement is below the configured minimum",
+  "promotion_metrics": {
+    "accuracy": 0.8970806531420089,
+    "precision": 0.8962450592885376,
+    "recall": 0.898019801980198,
+    "f1": 0.897131552917903,
+    "evaluation_dataset_id": "bfd917fa5a9df48bcd683fa17cb9dfa5e2fc3f3b915a7626f84948a8d0eaffcc"
+  },
+  "previous_production_model_version": "best_linear_svm_calibrated",
+  "production_promotion_metrics": {
+    "accuracy": 0.954477981197427,
+    "precision": 0.9540059347181009,
+    "recall": 0.9549504950495049,
+    "f1": 0.954477981197427
+  },
+  "production_promotion_performed": false,
+  "library_versions": {
+    "numpy": "2.5.2",
+    "pandas": "2.3.3",
+    "scikit-learn": "1.9.0",
+    "scipy": "1.18.1",
+    "xgboost": "3.4.1",
+    "lightgbm": "4.7.0",
+    "mlflow": "3.15.2"
+  },
+  "artifacts": {
+    "comparison": "artifacts/experiments/manual-candidate/model_comparison.csv",
+    "evaluation": "artifacts/experiments/manual-candidate/evaluation_results.json",
+    "selected_model": "artifacts/experiments/manual-candidate/selected_model.pkl"
+  }
+}
