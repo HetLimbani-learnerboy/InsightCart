@@ -5,6 +5,9 @@ import hashlib
 import json
 import os
 import sys
+import subprocess
+import platform
+from datetime import datetime, timezone
 from importlib.metadata import PackageNotFoundError, version
 
 import joblib
@@ -105,6 +108,8 @@ def run_experiment(
     promote: bool = False,
 ):
     os.makedirs(output_dir, exist_ok=True)
+    experiment_id = os.path.basename(os.path.abspath(output_dir))
+    started_at = datetime.now(timezone.utc).isoformat()
     logger.info("Starting isolated dataset-v2 experiment")
     with open(dataset_path, "rb") as dataset_file:
         dataset_fingerprint = hashlib.sha256(dataset_file.read()).hexdigest()
@@ -224,6 +229,29 @@ def run_experiment(
         },
         production_metrics,
     )
+    promotion_decision_path = os.path.join(output_dir, "promotion_decision.json")
+    promotion_decision = {
+        "decision": "approved" if gate_passed else "rejected",
+        "promotion_requested": bool(promote),
+        "promotion_performed": False,
+        "reason": gate_reason,
+        "candidate_metrics": candidate_promotion_metrics,
+        "production_metrics": {
+            key: production_metrics[key]
+            for key in ("accuracy", "precision", "recall", "f1")
+        },
+        "criteria": {
+            "primary_metric": os.getenv("MODEL_PRIMARY_METRIC", "f1"),
+            "minimum_improvement": float(os.getenv("MODEL_MINIMUM_IMPROVEMENT", "0")),
+            "minimum_metrics": {
+                metric: float(os.getenv(f"MODEL_MIN_{metric.upper()}", "0"))
+                for metric in ("accuracy", "precision", "recall", "f1")
+            },
+            "evaluation_dataset_id": transformed.promotion_dataset_id,
+        },
+    }
+    with open(promotion_decision_path, "w", encoding="utf-8") as decision_file:
+        json.dump(promotion_decision, decision_file, indent=2, allow_nan=False)
     promotion_performed = False
     if promote and gate_passed:
         promoted_metrics = {
@@ -252,10 +280,30 @@ def run_experiment(
         )
         promotion_performed = True
         gate_reason = "candidate passed validation and explicit promotion completed"
+        promotion_decision.update({
+            "decision": "promoted",
+            "promotion_performed": True,
+            "reason": gate_reason,
+        })
+        with open(promotion_decision_path, "w", encoding="utf-8") as decision_file:
+            json.dump(promotion_decision, decision_file, indent=2, allow_nan=False)
     elif promote:
         gate_reason = f"promotion blocked: {gate_reason}"
 
+    promotion_decision.update({
+        "decision": (
+            "promoted" if promotion_performed else
+            "eligible_not_requested" if gate_passed else "rejected"
+        ),
+        "promotion_performed": promotion_performed,
+        "reason": gate_reason,
+    })
+    with open(promotion_decision_path, "w", encoding="utf-8") as decision_file:
+        json.dump(promotion_decision, decision_file, indent=2, allow_nan=False)
+
     metadata = {
+        "experiment_id": experiment_id,
+        "timestamp_utc": started_at,
         "dataset_path": os.path.basename(dataset_path),
         "dataset_version": dataset_fingerprint,
         "dataset_fingerprint": dataset_fingerprint,
@@ -306,12 +354,36 @@ def run_experiment(
         },
         "production_promotion_performed": promotion_performed,
         "library_versions": package_versions(),
+        "python_version": platform.python_version(),
+        "preprocessing_configuration": {
+            "tfidf_max_features": transformation.config.max_features,
+            "tfidf_ngram_range": list(transformation.config.ngram_range),
+            "tfidf_min_df": transformation.config.min_df,
+            "tfidf_max_df": transformation.config.max_df,
+            "category_encoder": "OneHotEncoder(handle_unknown='ignore')",
+            "rating_scaler": "MinMaxScaler",
+            "positive_class": 1,
+        },
         "artifacts": {
             "comparison": comparison_path,
             "evaluation": evaluation_path,
             "selected_model": model_path,
+            "promotion_decision": promotion_decision_path,
         },
     }
+    try:
+        metadata["git_commit_sha"] = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=project_root, text=True,
+            stderr=subprocess.DEVNULL,
+        ).strip()
+    except (OSError, subprocess.CalledProcessError):
+        metadata["git_commit_sha"] = None
+    metadata["candidate_artifact_sha256"] = {
+        path: hashlib.sha256(open(path, "rb").read()).hexdigest()
+        for path in (model_path, comparison_path, evaluation_path)
+        if os.path.isfile(path)
+    }
+    metadata["mlflow_run_id"] = getattr(evaluation, "run_id", None)
     metadata_path = os.path.join(output_dir, "model_metadata.json")
     with open(metadata_path, "w", encoding="utf-8") as metadata_file:
         json.dump(metadata, metadata_file, indent=2, allow_nan=False)

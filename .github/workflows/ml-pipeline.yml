@@ -196,31 +196,37 @@ jobs:
 
           echo "Required model artifacts are available."
 
-      - name: Run existing training pipeline
+      - name: Train candidate
         run: |
           set -euo pipefail
 
-          python src/pipeline/review_detection_training_pipeline.py
+          python src/pipeline/review_detection_training_pipeline.py \
+            --output-dir artifacts/experiments/dvc-candidate
 
-      - name: Check evaluation results
-        if: always()
+      - name: Validate mandatory experiment outputs
         run: |
-          echo "Checking generated evaluation results..."
-
-          if [ -f data/processed/model_comparison.csv ]; then
-            echo "Model comparison file exists."
-          else
-            echo "::warning::No model_comparison.csv was generated."
-          fi
+          set -euo pipefail
+          output=artifacts/experiments/dvc-candidate
+          test -s "$output/model_comparison.csv"
+          test -s "$output/evaluation_results.json"
+          test -s "$output/model_metadata.json"
+          test -s "$output/promotion_decision.json"
+          test -s "$output/selected_model.pkl"
+          test -s "$output/preprocessing/tfidf_vectorizer.pkl"
+          test -s "$output/preprocessing/category_encoder.pkl"
+          test -s "$output/preprocessing/rating_scaler.pkl"
+          python -c 'import json,sys; p=sys.argv[1]; d=json.load(open(p)); assert all(k in d for k in ("f1", "selected_model", "dataset_version"))' "$output/evaluation_results.json"
+          python -c 'import json,sys; d=json.load(open(sys.argv[1])); assert d.get("experiment_id") and d.get("candidate_artifact_sha256")' "$output/model_metadata.json"
+          python -c 'import pandas as pd,sys; d=pd.read_csv(sys.argv[1]); assert len(d) and {"algorithm","training_status","validation_f1"}.issubset(d.columns)' "$output/model_comparison.csv"
+          python -c 'import joblib,sys; b=joblib.load(sys.argv[1]); assert b.get("model") is not None' "$output/selected_model.pkl"
 
       - name: Upload evaluation results
-        if: always()
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: insightcart-ml-results-${{ github.run_id }}
           path: |
-            data/processed/model_comparison.csv
             artifacts/experiments/dvc-candidate/
             mlruns/
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 14

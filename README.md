@@ -731,7 +731,7 @@ dvc repro train_candidate
 ```
 
 For an isolated run without DVC caching, use
-`python src/pipeline/run_v2_experiment.py --dataset data/raw/fake_reviews_dataset.csv`.
+`python src/pipeline/review_detection_training_pipeline.py --dataset data/raw/fake_reviews_dataset.csv --output-dir artifacts/experiments/manual-candidate`.
 Candidate selection uses validation F1 with ROC-AUC as a tie-breaker; the
 selected candidate is evaluated once on the held-out test split. The test set
 is not used for model selection. MLflow logging failures block a successful
@@ -744,13 +744,19 @@ test set is reported once and is not used for promotion decisions.
 Production promotion is opt-in and requires `--promote`. The active production
 model is evaluated on the same promotion rows as the candidate. The gate fails
 closed unless all four metrics are available, the evaluation identity matches,
-and the candidate strictly improves the configured primary metric. Metric
+and the candidate improves the configured primary metric by the configured minimum. Metric
 floors default to `0` and are technical defaults,
 not approved business requirements; configure `MODEL_MIN_ACCURACY`,
 `MODEL_MIN_PRECISION`, `MODEL_MIN_RECALL`, `MODEL_MIN_F1`,
 `MODEL_PRIMARY_METRIC` (default `f1`), and `MODEL_MINIMUM_IMPROVEMENT` after
 confirming acceptable false-positive/false-negative costs. A single held-out
 score is not a statistical reliability guarantee.
+
+The recorded manual candidate was rejected because its promotion holdout F1 was
+0.8971 while production scored 0.9545 on those same rows. The gate compares
+those matched promotion metrics; its validation F1 of 0.8975 and final test F1
+of 0.8996 are not promotion inputs. Each run writes its full decision and
+reason to `promotion_decision.json`.
 
 ```bash
 MODEL_MIN_F1=0.90 MODEL_MINIMUM_IMPROVEMENT=0.01 \

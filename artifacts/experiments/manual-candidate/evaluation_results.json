@@ -1,0 +1,21 @@
+{
+    "accuracy": 0.8998020781791193,
+    "precision": 0.9013664596273292,
+    "recall": 0.8977975748577085,
+    "f1": 0.899578477560129,
+    "roc_auc": 0.962663309536318,
+    "selected_model": "Linear SVM",
+    "confusion_matrix": [
+        [
+            3646,
+            397
+        ],
+        [
+            413,
+            3628
+        ]
+    ],
+    "dataset_version": "dd49c3b4931af457349c110537da741bb8f2a4200fb9f1dcf4ff21ac6af6c45a",
+    "evaluation_dataset_id": "9933b452c2f335cca97274193bbc75ca071f5f7cf8c3f4b0740c8e3fd9d1d3dc",
+    "evaluation_average": "binary"
+}
