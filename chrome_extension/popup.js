@@ -5,6 +5,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
     analyzeBtn.addEventListener("click", analyzeReviews);
 
+    function sendRuntimeMessage(message) {
+        return new Promise((resolve, reject) => {
+            chrome.runtime.sendMessage(message, response => {
+                const runtimeError = chrome.runtime.lastError;
+                if (runtimeError) {
+                    reject(new Error(runtimeError.message));
+                    return;
+                }
+                resolve(response);
+            });
+        });
+    }
+
     async function analyzeReviews() {
         try {
             analyzeBtn.disabled = true;
@@ -75,7 +88,7 @@ document.addEventListener("DOMContentLoaded", () => {
             status.innerText = `Found ${extractedData.reviews.length} reviews. Analyzing...`;
 
             // 3. Send payload to background script to call prediction API
-            const predictionResponse = await chrome.runtime.sendMessage({
+            const predictionResponse = await sendRuntimeMessage({
                 action: "predict_reviews",
                 reviews: extractedData.reviews
             });
@@ -86,8 +99,75 @@ document.addEventListener("DOMContentLoaded", () => {
                 );
             }
 
+            status.innerText = "Authenticity complete. Checking review sentiment...";
+            let sentimentResults = [];
+            // The extractor returns objects with a confirmed `review` field.
+            // Keep those objects for authenticity; sentiment accepts strings.
+            const reviewTexts = extractedData.reviews.map(item =>
+                typeof item?.review === "string" ? item.review.trim() : ""
+            );
+            for (let offset = 0; offset < reviewTexts.length; offset += 40) {
+                const chunk = reviewTexts.slice(offset, offset + 40);
+                const chunkResults = [];
+                try {
+                    if (chunk.some(review => !review)) {
+                        throw new Error("One or more extracted reviews had no review text.");
+                    }
+
+                    const sentimentResponse = await sendRuntimeMessage({
+                        action: "analyze_sentiments",
+                        reviews: chunk
+                    });
+
+                    if (!sentimentResponse?.success) {
+                        throw new Error(sentimentResponse?.error || "Sentiment request failed.");
+                    }
+
+                    const apiResults = sentimentResponse.data?.results;
+                    if (!Array.isArray(apiResults)) {
+                        throw new Error("Sentiment API returned an unexpected results structure.");
+                    }
+
+                    chunk.forEach((review, index) => {
+                        const item = apiResults[index];
+                        const label = item?.sentiment?.label;
+                        const validLabel = ["positive", "neutral", "negative"].includes(label);
+
+                        if (item?.available && validLabel) {
+                            // Keep the API's nested sentiment object intact; the UI
+                            // reads item.sentiment.label and item.sentiment.confidence.
+                            chunkResults.push(item);
+                        } else {
+                            chunkResults.push({
+                                available: false,
+                                sentiment: null,
+                                model: item?.model ?? null,
+                                error: item?.error || (item ? "invalid_sentiment_result" : "missing_result")
+                            });
+                        }
+                    });
+                } catch (error) {
+                    console.warn("Sentiment batch unavailable", {
+                        reviewCount: chunk.length,
+                        message: error.message
+                    });
+                    chunkResults.push(...chunk.map(() => ({
+                        available: false,
+                        sentiment: null,
+                        error: error.message || "sentiment_service_unavailable"
+                    })));
+                }
+                sentimentResults.push(...chunkResults);
+            }
+
+            console.info("InsightCart sentiment results received", {
+                submitted: reviewTexts.length,
+                successful: sentimentResults.filter(item => item.available).length,
+                failed: sentimentResults.filter(item => !item.available).length
+            });
+
             // 4. Render output in expandable review cards
-            displayResults(extractedData, predictionResponse.data);
+            displayResults(extractedData, predictionResponse.data, sentimentResults);
             status.innerText = "Analysis completed successfully";
 
         } catch (error) {
@@ -102,7 +182,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // =================================================
     // DISPLAY RESULTS
     // =================================================
-    function displayResults(extractedData, data) {
+    function displayResults(extractedData, data, sentimentResults = []) {
         resultsContainer.innerHTML = "";
 
         const results = data.results || [];
@@ -132,19 +212,53 @@ document.addEventListener("DOMContentLoaded", () => {
 
         resultsContainer.appendChild(summary);
 
+        const sentimentCounts = sentimentResults.reduce((counts, item) => {
+            const label = item?.sentiment?.label;
+            if (item?.available && ["positive", "neutral", "negative"].includes(label)) {
+                counts[label]++;
+            } else {
+                counts.failed++;
+            }
+            return counts;
+        }, { positive: 0, neutral: 0, negative: 0, failed: 0 });
+
+        const sentimentSummary = document.createElement("div");
+        sentimentSummary.className = "summary sentiment-summary";
+        sentimentSummary.setAttribute("aria-label", "Sentiment analysis summary");
+        sentimentSummary.innerHTML = `
+            <div class="summary-item">
+                <span class="summary-number">${sentimentResults.length}</span>
+                <span class="summary-label">Sentiment Analyzed</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-number" style="color:#15803d;">${sentimentCounts.positive}</span>
+                <span class="summary-label">Positive</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-number" style="color:#dc2626;">${sentimentCounts.negative}</span>
+                <span class="summary-label">Negative</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-number" style="color:#2563eb;">${sentimentCounts.neutral}</span>
+                <span class="summary-label">Neutral</span>
+            </div>
+            ${sentimentCounts.failed ? `<div class="summary-item"><span class="summary-number">${sentimentCounts.failed}</span><span class="summary-label">Unavailable</span></div>` : ""}
+        `;
+        resultsContainer.appendChild(sentimentSummary);
+
         // -----------------------------------
         // EXPANDABLE REVIEW CARDS
         // -----------------------------------
         results.forEach((result, index) => {
             const originalReview = extractedData.reviews[index] || {};
-            createReviewCard(originalReview, result);
+            createReviewCard(originalReview, result, sentimentResults[index]);
         });
     }
 
     // =================================================
     // REVIEW CARD COMPONENT
     // =================================================
-    function createReviewCard(review, result) {
+    function createReviewCard(review, result, sentimentResult) {
         const card = document.createElement("div");
         card.className = "review-card";
 
@@ -161,6 +275,13 @@ document.addEventListener("DOMContentLoaded", () => {
         const rating = review.rating || result.rating || 5;
         const confidence = result.confidence || "unknown";
         const reviewType = result.review_type || "Unknown";
+        const sentiment = sentimentResult?.available ? sentimentResult.sentiment : null;
+        const sentimentLabel = ["positive", "neutral", "negative"].includes(sentiment?.label)
+            ? sentiment.label
+            : null;
+        const sentimentConfidence = Number(sentiment?.confidence);
+        const sentimentModel = sentimentResult?.model?.name;
+        const sentimentError = sentimentResult?.error;
 
         card.innerHTML = `
             <div class="review-header">
@@ -209,6 +330,17 @@ document.addEventListener("DOMContentLoaded", () => {
                         `
                 : ""
             }
+                <section class="sentiment-result ${sentimentLabel || "unavailable"}" aria-label="Sentiment analysis">
+                    <div class="sentiment-heading">Sentiment <span>(separate from authenticity)</span></div>
+                    ${sentimentLabel
+                ? `<div class="sentiment-label">${escapeHtml(sentimentLabel)}</div>
+                       ${Number.isFinite(sentimentConfidence) ? `<div class="sentiment-confidence">Confidence: ${Math.round(sentimentConfidence * 100)}%</div>` : ""}
+                       ${sentimentModel ? `<div class="sentiment-confidence">Model: ${escapeHtml(sentimentModel)}</div>` : ""}`
+                : `<div class="sentiment-label">Unavailable</div>
+                       <div class="sentiment-confidence">${escapeHtml(sentimentError || "Sentiment service did not return a result.")}</div>`
+            }
+                    <div class="sentiment-note">Opinion prediction only; it does not prove a review is genuine or fake.</div>
+                </section>
             </div>
         `;
 

@@ -202,3 +202,21 @@ body {
     line-height: 1.4;
     color: #6b7280;
 }
+
+.sentiment-result {
+    margin-top: 10px;
+    padding: 10px;
+    border-radius: 8px;
+    background: #f3f4f6;
+    border-left: 4px solid #6b7280;
+}
+
+.sentiment-result.positive { border-left-color: #15803d; }
+.sentiment-result.neutral { border-left-color: #2563eb; }
+.sentiment-result.negative { border-left-color: #dc2626; }
+.sentiment-result.unavailable { border-left-color: #9ca3af; }
+
+.sentiment-heading { font-size: 11px; font-weight: 700; }
+.sentiment-heading span { font-weight: 400; color: #6b7280; }
+.sentiment-label { margin-top: 5px; font-size: 13px; font-weight: 800; text-transform: capitalize; }
+.sentiment-confidence, .sentiment-note { margin-top: 4px; font-size: 10px; color: #6b7280; }

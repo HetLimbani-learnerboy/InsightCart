@@ -350,6 +350,108 @@ Purpose:
 
 -  Predict Positive, Neutral, or Negative sentiment. 
 
+### InsightCart sentiment API integration
+
+Sentiment runs as a separate, optional Hugging Face service. It does not replace
+the fake/genuine classifier: a review may be negative and genuine, or positive
+and fake. `POST /api/v1/sentiment/analyze` handles one review, and
+`POST /api/v1/sentiment/analyze/batch` supports up to 40 extension reviews with
+at most four concurrent provider calls. If sentiment is unavailable, the
+extension still shows authenticity results and marks sentiment unavailable.
+
+The backend uses `InferenceClient(provider="hf-inference")` and
+`cardiffnlp/twitter-roberta-base-sentiment-latest`. Hugging Face currently
+documents this model for inference providers and maps its classes as 0 negative,
+1 neutral, and 2 positive. The model is English and trained on TweetEval/Twitter
+text, so product-review suitability is not assumed. Confidence is the model's
+returned softmax score, not a calibrated probability of correctness. Review
+text is sent to Hugging Face for inference; do not submit sensitive or personally
+identifying content. The API avoids logging review text and credentials.
+
+Server configuration in `.env` (never put `HF_TOKEN` in a `VITE_` variable):
+
+```env
+HF_SENTIMENT_ENABLED=true
+HF_TOKEN=your_hugging_face_user_access_token
+HF_SENTIMENT_MODEL=cardiffnlp/twitter-roberta-base-sentiment-latest
+HF_SENTIMENT_TIMEOUT=30
+HF_SENTIMENT_MAX_LENGTH=512
+```
+
+`HF_SENTIMENT_MAX_LENGTH` is a character limit for this hosted endpoint. The
+provider call has a timeout and no automatic retry. Missing configuration,
+provider authentication failures, rate limits, and outages return controlled
+errors; there is no silent model fallback. The hosted provider requires a
+Hugging Face token with Inference Providers access. The token remains in the
+backend environment and is never returned to clients.
+
+Run the API and the Chrome extension locally:
+
+```bash
+python -m pip install -r requirements.txt
+# Add the server-only HF settings above to your existing .env.
+DEBUG=false python -m uvicorn app.main:app --reload
+```
+
+The same backend configuration is passed into the existing Compose service from
+the ignored `.env` file. After adding the required `HF_*` values there, run the
+container stack with:
+
+```bash
+docker compose up --build
+```
+
+Load `chrome_extension/` as an unpacked extension in Chrome, then open an Amazon
+review page and select **Analyze Reviews**. Each review card displays authenticity
+and sentiment in separate sections. To call the API directly:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/sentiment/analyze \
+  -H 'Content-Type: application/json' \
+  -d '{"review":"The packaging was simple and the headphones sound excellent."}'
+```
+
+Response fields are `success`, `sentiment.label`, `sentiment.confidence`,
+`model.provider`, `model.name`, and `processing_time_ms`. A sample response is
+illustrative; runtime confidence and latency come from the inference result.
+Errors use FastAPI's `detail` object with a stable `code` and safe `message`.
+
+Automated API tests use mocked inference and require no token or network:
+
+```bash
+DEBUG=false pytest -q
+flake8 app src tests scripts
+```
+
+For a real quality evaluation, prepare a manually labeled CSV with `text,label`
+columns and labels `positive`, `neutral`, or `negative`, then run:
+
+```bash
+python scripts/evaluate_hf_sentiment.py \
+  --input /path/to/manually-labeled-product-reviews.csv \
+  --output artifacts/sentiment-evaluation.json
+```
+
+This records the model, date, dataset SHA-256, sample count, per-class
+precision/recall/F1, accuracy, and confusion matrix without logging review text.
+Set `SENTIMENT_EVALUATION_MLFLOW=true` to log aggregate metrics to the configured
+MLflow tracking server. No product-review evaluation metrics are claimed until
+that script is run against a representative, manually labeled dataset.
+
+Example successful response (illustrative values only):
+
+```json
+{
+  "success": true,
+  "sentiment": {"label": "positive", "confidence": 0.93},
+  "model": {
+    "provider": "huggingface",
+    "name": "cardiffnlp/twitter-roberta-base-sentiment-latest"
+  },
+  "processing_time_ms": 420.0
+}
+```
+
 ---
 
 ### Embeddings (Optional)

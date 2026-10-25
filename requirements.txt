@@ -12,7 +12,7 @@ scipy
 # -------------------------
 # Machine Learning
 # -------------------------
-scikit-learn
+scikit-learn==1.9.0
 xgboost
 lightgbm
 joblib
@@ -31,6 +31,17 @@ emoji
 skops
 
 # -------------------------
+# Local Sentiment Analysis
+# Hugging Face Transformers + PyTorch
+# No HF_TOKEN required for public models
+# -------------------------
+torch
+transformers
+huggingface_hub==0.36.2
+safetensors
+tokenizers
+
+# -------------------------
 # ML Experiment Tracking
 # -------------------------
 mlflow>=3.0,<4
@@ -43,12 +54,14 @@ uvicorn[standard]
 pydantic
 pydantic-settings
 python-multipart
+typing-extensions
 
 # -------------------------
 # Database - PostgreSQL
 # -------------------------
 sqlalchemy
 psycopg[binary]
+psycopg2-binary
 
 # -------------------------
 # Environment Variables
@@ -94,5 +107,3 @@ ipykernel
 # Monitoring
 # -------------------------
 prometheus-client
-
-psycopg2-binary

@@ -37,6 +37,16 @@ REQUEST_LATENCY = Histogram(
     ],
 )
 
+SENTIMENT_REQUEST_COUNT = Counter(
+    "insightcart_sentiment_requests_total",
+    "Sentiment inference requests by outcome",
+    ["outcome"],
+)
+SENTIMENT_REQUEST_LATENCY = Histogram(
+    "insightcart_sentiment_request_duration_seconds",
+    "Sentiment inference duration in seconds",
+)
+
 
 # ============================================================
 # PREDICTION COUNT

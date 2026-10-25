@@ -7,6 +7,7 @@ Purpose :
 Store all FastAPI configuration values using pydantic-settings.
 """
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -22,6 +23,12 @@ class Settings(BaseSettings):
     DEBUG: bool = True
 
     DATABASE_URL: str = "sqlite:///./test.db"
+
+    HF_SENTIMENT_ENABLED: bool = True
+    HF_TOKEN: str = ""
+    HF_SENTIMENT_MODEL: str = "cardiffnlp/twitter-roberta-base-sentiment-latest"
+    HF_SENTIMENT_TIMEOUT: float = Field(default=30.0, gt=0)
+    HF_SENTIMENT_MAX_LENGTH: int = Field(default=512, ge=1, le=5000)
 
     model_config = SettingsConfigDict(
         env_file=".env",
