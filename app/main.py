@@ -24,6 +24,7 @@ from app.tracing import configure_tracing
 from app.routes.health import router as health_router
 from app.routes.review_detection import router as review_router
 from app.routes.sentiment import router as sentiment_router
+from app.routes.review_summary import router as review_summary_router
 
 from app.middleware.prometheus import PrometheusMiddleware
 
@@ -64,6 +65,7 @@ app.add_middleware(
 app.include_router(health_router, prefix="")
 app.include_router(review_router, prefix=settings.API_PREFIX)
 app.include_router(sentiment_router, prefix=settings.API_PREFIX)
+app.include_router(review_summary_router, prefix=settings.API_PREFIX)
 
 
 @app.get("/", tags=["Home"])

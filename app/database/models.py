@@ -15,6 +15,7 @@ from sqlalchemy import (
     String,
     Text,
     DateTime,
+    JSON,
 )
 
 from app.database.connection import Base
@@ -80,3 +81,14 @@ class ReviewPrediction(Base):
         default=datetime.utcnow,
         nullable=False,
     )
+
+
+class ProductReviewSummary(Base):
+    __tablename__ = "product_review_summaries"
+
+    id = Column(Integer, primary_key=True, index=True)
+    product_id = Column(String(255), nullable=True, index=True)
+    product_name = Column(String(500), nullable=False)
+    fingerprint = Column(String(64), nullable=False, index=True)
+    summary = Column(JSON, nullable=False)
+    generated_at = Column(DateTime, default=datetime.utcnow, nullable=False)

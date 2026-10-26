@@ -1,5 +1,5 @@
 from app.database.connection import engine, Base
-from app.database.models import ReviewPrediction  # noqa: F401
+from app.database.models import ProductReviewSummary, ReviewPrediction  # noqa: F401
 
 
 def init_db():
