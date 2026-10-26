@@ -1,6 +1,54 @@
 const API_BASE_URL = "http://localhost:8000/api/v1";
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action !== "summarize_reviews") {
+        return;
+    }
+
+    (async () => {
+        try {
+            const payload = message.payload;
+            if (!payload || typeof payload.product_name !== "string" || !Array.isArray(payload.reviews) || !payload.reviews.length) {
+                sendResponse({ success: false, error: "Enter a product name and at least one review." });
+                return;
+            }
+
+            const response = await fetch(`${API_BASE_URL}/review-summary/summarize`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+            const data = await response.json().catch(() => null);
+            if (!response.ok) {
+                const detail = data?.detail;
+                let error;
+                if (response.status === 422) error = "Some review details are invalid. Check the product name, review text, and ratings.";
+                else if (response.status === 413) error = "This review set is too large. Remove some reviews and try again.";
+                else if (response.status === 503) error = "Review summarization is unavailable. Check that the backend and Groq configuration are ready.";
+                else if (response.status === 502) error = "The AI provider could not complete this request. Please retry.";
+                else if (response.status === 500 && detail?.request_id) error = `The backend could not complete the summary (reference ${detail.request_id}). Check the backend log for this reference.`;
+                else if (response.status >= 500) error = "The server could not complete the summary. Please retry.";
+                else error = typeof detail === "string" ? detail : "The summary request was rejected.";
+                sendResponse({ success: false, error, retryable: response.status === 502 || response.status >= 500 });
+                return;
+            }
+            if (!data || typeof data.overall_summary !== "string" || !Array.isArray(data.pros) || !Array.isArray(data.cons) || !Array.isArray(data.key_topics)) {
+                sendResponse({ success: false, error: "The server returned an unexpected summary format." });
+                return;
+            }
+            sendResponse({ success: true, data });
+        } catch (error) {
+            sendResponse({
+                success: false,
+                error: "Could not connect to InsightCart. Make sure the backend is running at http://localhost:8000.",
+                retryable: true
+            });
+        }
+    })();
+    return true;
+});
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action !== "analyze_sentiments") {
         return;
     }

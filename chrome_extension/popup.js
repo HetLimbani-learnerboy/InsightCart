@@ -2,8 +2,121 @@ document.addEventListener("DOMContentLoaded", () => {
     const analyzeBtn = document.getElementById("analyzeBtn");
     const resultsContainer = document.getElementById("results");
     const status = document.getElementById("status");
+    let summaryResults = null;
 
     analyzeBtn.addEventListener("click", analyzeReviews);
+    function renderSummary(data, sourceReviews) {
+        summaryResults.replaceChildren();
+        const summaryHeading = document.createElement("h2");
+        summaryHeading.className = "inline-summary-heading";
+        summaryHeading.textContent = "AI-Generated Review Summary";
+        summaryResults.appendChild(summaryHeading);
+        const overview = document.createElement("article");
+        overview.className = "result-card overview-card";
+        const summaryText = document.createElement("p");
+        summaryText.className = "overall-summary";
+        summaryText.textContent = data.overall_summary || "No overall summary was returned.";
+        overview.appendChild(summaryText);
+        const meta = document.createElement("div");
+        meta.className = "summary-meta";
+        meta.append(
+            metadataChip("Model", data.model || "Not provided"),
+            metadataChip("Generated", formatDateTime(data.generated_at))
+        );
+        overview.appendChild(meta);
+        if (data.ai_generated !== false) {
+            const badge = document.createElement("span");
+            badge.className = "ai-badge";
+            badge.textContent = "AI-generated";
+            overview.appendChild(badge);
+        }
+        summaryResults.appendChild(overview);
+
+        summaryResults.appendChild(renderFindings("Key Pros", data.pros, "positive", sourceReviews));
+        summaryResults.appendChild(renderFindings("Key Cons", data.cons, "negative", sourceReviews));
+        summaryResults.appendChild(renderTopics(data.key_topics));
+        const sentimentNote = document.createElement("p");
+        sentimentNote.className = "summary-context";
+        sentimentNote.textContent = "Review-level sentiment distribution is shown in the statistics above.";
+        summaryResults.appendChild(sentimentNote);
+        if (typeof data.recommendation === "string" && data.recommendation.trim()) {
+            const recommendation = document.createElement("article");
+            recommendation.className = "result-card recommendation-card";
+            const heading = document.createElement("h3"); heading.textContent = "Buying insight";
+            const body = document.createElement("p"); body.textContent = data.recommendation;
+            const note = document.createElement("small"); note.textContent = "A summary of submitted feedback, not a guarantee of suitability.";
+            recommendation.append(heading, body, note);
+            summaryResults.appendChild(recommendation);
+        }
+    }
+
+    function metadataChip(label, value) {
+        const item = document.createElement("div"); item.className = "meta-chip";
+        const name = document.createElement("span"); name.textContent = label;
+        const content = document.createElement("strong"); content.textContent = String(value);
+        item.append(name, content); return item;
+    }
+
+    function renderFindings(headingText, findings, tone, sourceReviews) {
+        const section = document.createElement("section"); section.className = "findings-section";
+        const heading = document.createElement("h3"); heading.textContent = headingText; section.appendChild(heading);
+        if (!Array.isArray(findings) || !findings.length) {
+            const empty = document.createElement("p"); empty.className = "empty-note"; empty.textContent = "No findings were returned."; section.appendChild(empty); return section;
+        }
+        findings.forEach(finding => {
+            const details = document.createElement("details"); details.className = `finding-card ${tone}`;
+            const summary = document.createElement("summary");
+            const topic = document.createElement("strong"); topic.textContent = finding?.topic || "Customer feedback";
+            const count = document.createElement("span");
+            const ids = Array.isArray(finding?.evidence_review_ids) ? finding.evidence_review_ids.filter(id => typeof id === "string") : [];
+            const safeCount = Number.isFinite(finding?.evidence_count) ? finding.evidence_count : 0;
+            count.textContent = `${safeCount} supporting review reference${safeCount === 1 ? "" : "s"}`;
+            summary.append(topic, count); details.appendChild(summary);
+            const findingText = document.createElement("p"); findingText.textContent = finding?.finding || "No details provided."; details.appendChild(findingText);
+            const matched = ids.map(id => ({ id, review: sourceReviews.find(review => review.review_id === id) })).filter(item => item.review);
+            if (matched.length) {
+                const list = document.createElement("div"); list.className = "evidence-list";
+                matched.forEach(({ id, review }) => {
+                    const evidence = document.createElement("article"); evidence.className = "evidence-item";
+                    const ref = document.createElement("strong"); ref.textContent = `Review ${id}`; evidence.appendChild(ref);
+                    if (review.title) { const title = document.createElement("div"); title.textContent = review.title; evidence.appendChild(title); }
+                    const text = document.createElement("p"); text.textContent = review.text; evidence.appendChild(text);
+                    if (Number.isFinite(review.rating)) { const rating = document.createElement("small"); rating.textContent = `${review.rating}/5 stars`; evidence.appendChild(rating); }
+                    list.appendChild(evidence);
+                });
+                details.appendChild(list);
+            } else {
+                const noEvidence = document.createElement("p"); noEvidence.className = "empty-note";
+                noEvidence.textContent = "No linked supporting reviews are available for this finding."; details.appendChild(noEvidence);
+            }
+            section.appendChild(details);
+        });
+        return section;
+    }
+
+    function renderTopics(topics) {
+        const section = document.createElement("section"); section.className = "topics-section";
+        const heading = document.createElement("h3"); heading.textContent = "Key topics"; section.appendChild(heading);
+        if (!Array.isArray(topics) || !topics.length) {
+            const empty = document.createElement("p"); empty.className = "empty-note"; empty.textContent = "No key topics were returned."; section.appendChild(empty); return section;
+        }
+        const list = document.createElement("div"); list.className = "topic-list";
+        topics.forEach(topic => {
+            const sentiment = ["positive", "neutral", "negative", "mixed"].includes(topic?.sentiment) ? topic.sentiment : "neutral";
+            const item = document.createElement("article"); item.className = `topic-card ${sentiment}`;
+            const title = document.createElement("strong"); title.textContent = topic?.topic || "Topic";
+            const badge = document.createElement("span"); badge.className = "topic-sentiment"; badge.textContent = sentiment;
+            const finding = document.createElement("p"); finding.textContent = topic?.finding || "";
+            item.append(title, badge, finding); list.appendChild(item);
+        });
+        section.appendChild(list); return section;
+    }
+
+    function formatDateTime(value) {
+        if (typeof value !== "string" || !value) return "Not provided";
+        const parsed = new Date(value);
+        return Number.isNaN(parsed.getTime()) ? "Not provided" : parsed.toLocaleString();
+    }
 
     function sendRuntimeMessage(message) {
         return new Promise((resolve, reject) => {
@@ -23,6 +136,7 @@ document.addEventListener("DOMContentLoaded", () => {
             analyzeBtn.disabled = true;
             analyzeBtn.innerText = "Analyzing...";
             status.innerText = "Extracting Amazon reviews...";
+            resultsContainer.replaceChildren();
 
             // 1. Get active Amazon tab
             const tabs = await chrome.tabs.query({
@@ -77,12 +191,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 !extractedData.reviews ||
                 extractedData.reviews.length === 0
             ) {
-                const isReviewPage = tab.url.includes("/product-reviews/");
-                throw new Error(
-                    isReviewPage
-                        ? "No reviews found on this page. Try scrolling down first."
-                        : "No reviews found. Click 'See all reviews' on the product page to open the full review list, then try again."
-                );
+                displayNoReviewsSummary();
+                status.innerText = "No reviews available to summarize.";
+                return;
             }
 
             status.innerText = `Found ${extractedData.reviews.length} reviews. Analyzing...`;
@@ -166,9 +277,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 failed: sentimentResults.filter(item => !item.available).length
             });
 
-            // 4. Render output in expandable review cards
+            // 4. Render the existing statistics and review cards, then summarize
+            // the same selected product review set below the statistics.
             displayResults(extractedData, predictionResponse.data, sentimentResults);
-            status.innerText = "Analysis completed successfully";
+            const summarySucceeded = await generateReviewSummary(extractedData);
+            status.innerText = summarySucceeded
+                ? "Analysis completed successfully"
+                : "Review analysis completed; AI summary is unavailable.";
 
         } catch (error) {
             console.error("InsightCart Error:", error);
@@ -246,6 +361,18 @@ document.addEventListener("DOMContentLoaded", () => {
         `;
         resultsContainer.appendChild(sentimentSummary);
 
+        summaryResults = document.createElement("section");
+        summaryResults.className = "inline-summary";
+        summaryResults.setAttribute("aria-live", "polite");
+        const summaryHeading = document.createElement("h2");
+        summaryHeading.className = "inline-summary-heading";
+        summaryHeading.textContent = "AI-Generated Review Summary";
+        const loadingMessage = document.createElement("p");
+        loadingMessage.className = "summary-loading";
+        loadingMessage.textContent = "Analyzing customer reviews...";
+        summaryResults.append(summaryHeading, loadingMessage);
+        resultsContainer.appendChild(summaryResults);
+
         // -----------------------------------
         // EXPANDABLE REVIEW CARDS
         // -----------------------------------
@@ -253,6 +380,95 @@ document.addEventListener("DOMContentLoaded", () => {
             const originalReview = extractedData.reviews[index] || {};
             createReviewCard(originalReview, result, sentimentResults[index]);
         });
+    }
+
+    function displayNoReviewsSummary() {
+        resultsContainer.replaceChildren();
+        summaryResults = document.createElement("section");
+        summaryResults.className = "inline-summary empty-summary";
+        const heading = document.createElement("h2");
+        heading.className = "inline-summary-heading";
+        heading.textContent = "AI-Generated Review Summary";
+        const message = document.createElement("p");
+        message.className = "empty-note";
+        message.textContent = "No reviews available to summarize.";
+        summaryResults.append(heading, message);
+        resultsContainer.appendChild(summaryResults);
+    }
+
+    async function generateReviewSummary(extractedData) {
+        const sourceReviews = (Array.isArray(extractedData.reviews) ? extractedData.reviews : [])
+            .filter(review => typeof review?.review === "string" && review.review.trim())
+            .map(review => {
+                const normalized = { text: review.review.trim() };
+                if (typeof review.id === "string" && review.id.trim() && !/^amazon-review-\d+$/i.test(review.id.trim())) {
+                    normalized.review_id = review.id.trim();
+                }
+                if (typeof review.title === "string" && review.title.trim()) normalized.title = review.title.trim();
+                if (Number.isInteger(review.rating) && review.rating >= 1 && review.rating <= 5) normalized.rating = review.rating;
+                return normalized;
+            });
+
+        if (!sourceReviews.length) {
+            renderSummaryError("No reviews available to summarize.");
+            return false;
+        }
+        if (typeof extractedData.product_name !== "string" || !extractedData.product_name.trim()) {
+            renderSummaryError("A product name was not available for this page.");
+            return false;
+        }
+
+        const payload = {
+            product_name: extractedData.product_name.trim(),
+            reviews: sourceReviews
+        };
+        if (typeof extractedData.url === "string" && extractedData.url.trim()) payload.product_url = extractedData.url;
+
+        try {
+            const response = await sendRuntimeMessage({ action: "summarize_reviews", payload });
+            if (!response?.success) {
+                renderSummaryError(response?.error || "The AI summary could not be generated.", response?.retryable ? payload : null, sourceReviews);
+                return false;
+            }
+            renderSummary(response.data, sourceReviews);
+            return true;
+        } catch (error) {
+            renderSummaryError("Could not connect to the summary service. Check that the InsightCart backend is running.", payload, sourceReviews);
+            return false;
+        }
+    }
+
+    function renderSummaryError(message, retryPayload = null, sourceReviews = []) {
+        if (!summaryResults) return;
+        summaryResults.replaceChildren();
+        const heading = document.createElement("h2");
+        heading.className = "inline-summary-heading";
+        heading.textContent = "AI-Generated Review Summary";
+        const error = document.createElement("p");
+        error.className = "summary-error";
+        error.setAttribute("role", "status");
+        error.textContent = message;
+        summaryResults.append(heading, error);
+        if (retryPayload) {
+            const retry = document.createElement("button");
+            retry.type = "button";
+            retry.className = "summary-retry";
+            retry.textContent = "Retry summary";
+            retry.addEventListener("click", async () => {
+                summaryResults.replaceChildren(heading, Object.assign(document.createElement("p"), {
+                    className: "summary-loading",
+                    textContent: "Analyzing customer reviews..."
+                }));
+                try {
+                    const response = await sendRuntimeMessage({ action: "summarize_reviews", payload: retryPayload });
+                    if (response?.success) renderSummary(response.data, sourceReviews);
+                    else renderSummaryError(response?.error || "The AI summary could not be generated.", retryPayload, sourceReviews);
+                } catch (_error) {
+                    renderSummaryError("Could not connect to the summary service. Check that the InsightCart backend is running.", retryPayload, sourceReviews);
+                }
+            });
+            summaryResults.appendChild(retry);
+        }
     }
 
     // =================================================

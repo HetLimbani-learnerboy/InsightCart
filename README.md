@@ -1,737 +1,182 @@
 # InsightCart
- 
 
-### AI-Powered Shopping Intelligence Platform with MLOps
+**AI-Powered Shopping Intelligence Platform with MLOps**
 
-**Tagline**
+> Shop Smarter with AI-Driven Product Insights
 
-> **Shop Smarter with AI-Driven Product Insights**
+InsightCart is a local-first Chrome Extension and FastAPI application that helps shoppers understand product reviews without reading every review manually. It combines three distinct AI components: a custom-trained fake-review classifier, a Hugging Face sentiment-analysis model, and Groq API-powered review summarization.
 
----
+The project also includes an MLOps workflow for reproducible training, experiment tracking, model/data versioning, automated testing, containerized local execution, and API monitoring.
 
-# Project Overview
+## Table of Contents
 
-**InsightCart** is an AI-powered Chrome Extension and MLOps platform that helps online shoppers make informed purchasing decisions by automatically analyzing product reviews using Natural Language Processing (NLP) and Machine Learning.
+- [Overview](#overview)
+- [Key Features](#key-features)
+- [AI Models](#ai-models)
+- [Architecture](#architecture)
+- [Technology Stack](#technology-stack)
+- [Repository Structure](#repository-structure)
+- [Dataset](#dataset)
+- [Machine Learning Workflow](#machine-learning-workflow)
+- [API Overview](#api-overview)
+- [Configuration](#configuration)
+- [Run Locally](#run-locally)
+- [Run with Docker Compose](#run-with-docker-compose)
+- [Chrome Extension Setup](#chrome-extension-setup)
+- [Training and Model Evaluation](#training-and-model-evaluation)
+- [DVC and MLflow](#dvc-and-mlflow)
+- [Monitoring](#monitoring)
+- [Testing and Code Quality](#testing-and-code-quality)
+- [Security and Data Use](#security-and-data-use)
+- [Limitations and Future Work](#limitations-and-future-work)
+- [Troubleshooting](#troubleshooting)
 
-Instead of manually reading hundreds or thousands of reviews, users can instantly understand the strengths, weaknesses, overall sentiment, and trustworthiness of a product. The extension extracts reviews from the current shopping page and sends them to an AI backend that performs multiple analyses, including review summarization, fake review detection, topic extraction, sentiment analysis, and personalized buying recommendations.
+## Overview
 
-Unlike a traditional machine learning application, InsightCart is designed as an end-to-end local MLOps project. It includes automated model training, experiment tracking, model versioning, containerized deployment, continuous integration, monitoring, and local Docker orchestration without requiring any cloud credentials or hosted infrastructure.
+Online product listings can contain large numbers of repetitive, conflicting, or potentially misleading reviews. InsightCart extracts review information from a supported product page, sends the permitted review data to its backend, and presents review-level authenticity and sentiment results alongside an AI-generated summary.
 
-The goal of the project is to demonstrate the complete lifecycle of developing, deploying, monitoring, and maintaining a machine learning application locally on a MacBook using Docker Compose, MLflow, DVC, Prometheus, and Grafana.
+The current project has three separate AI components:
 
----
+1. **Custom fake-review detection model:** trained and evaluated within this project to classify a review as likely human-written or likely AI-generated/fake according to the training dataset's labels.
+2. **Hugging Face sentiment model:** uses `cardiffnlp/twitter-roberta-base-sentiment-latest` to classify sentiment as positive, neutral, or negative.
+3. **Groq summarization API:** generates a concise summary and structured findings from a supplied set of product reviews.
 
-# Problem Statement
+These components answer different questions. A negative review may be genuine, and a positive review may be suspicious; sentiment is not proof of authenticity. Model predictions are estimates and should not be treated as definitive judgments about an individual reviewer.
 
-Online shopping platforms often contain thousands of customer reviews, making it difficult for buyers to quickly understand product quality.
+InsightCart is designed to run locally for development. The Hugging Face sentiment feature requires an eligible Hugging Face Inference Providers token, and Groq summarization requires a Groq API key. These two features therefore use external inference services even when the application and its MLOps tooling are run locally.
 
-Current problems include:
+## Key Features
 
--  Reading hundreds of reviews takes significant time. 
--  Fake reviews reduce trust in product ratings. 
--  Customers struggle to identify the most common complaints and positive feedback. 
--  Star ratings alone do not accurately reflect user experiences. 
--  Product reviews are often long and repetitive. 
+- Extract review details from supported shopping pages using a Chrome Extension.
+- Predict review authenticity using the custom-trained classifier.
+- Analyze sentiment as positive, neutral, or negative.
+- Summarize supplied reviews using Groq.
+- Present common pros, complaints, topics, sentiment distribution, and evidence references when available in the model response.
+- Serve predictions through FastAPI.
+- Track training experiments and evaluation metrics with MLflow.
+- Version datasets and model artifacts with DVC.
+- Run the application and local supporting services with Docker Compose.
+- Validate code with automated tests and GitHub Actions.
+- Expose service metrics for monitoring with Prometheus and Grafana when configured.
 
-InsightCart addresses these challenges by using Artificial Intelligence and Machine Learning to provide concise, trustworthy, and actionable insights.
+## AI Models
 
----
+| Component | Implementation | Input | Output |
+|---|---|---|---|
+| Fake-review detection | Custom-trained scikit-learn pipeline using TF-IDF text features and encoded/scaled metadata where configured | Review text, rating, category | Predicted class and confidence/score supported by the trained pipeline |
+| Sentiment analysis | Hugging Face Inference Providers with `cardiffnlp/twitter-roberta-base-sentiment-latest` | Review text | Positive, neutral, or negative label and provider confidence score |
+| Review summarization | Groq API using the model configured by `GROQ_MODEL` | Product name and supplied reviews | Summary, pros, cons, topics, and other structured fields supported by the API schema |
 
-# Project Objectives
+### 1. Custom fake-review detection model
 
-The primary objectives of InsightCart are:
+The classifier is trained from the project's labeled fake/genuine review dataset. The training pipeline performs data validation, preprocessing, feature generation, candidate model training, evaluation, and optional promotion of an approved model artifact.
 
--  Develop an intelligent Chrome Extension for e-commerce websites. 
--  Automatically analyze product reviews. 
--  Detect fake or suspicious reviews. 
--  Generate AI-powered summaries. 
--  Perform sentiment analysis on customer opinions. 
--  Recommend whether a product is worth purchasing. 
--  Build an end-to-end MLOps pipeline. 
--  Run the application locally with Docker Compose. 
--  Track machine learning experiments using MLflow. 
--  Automate local validation with GitHub Actions. 
--  Monitor deployed models and APIs with Prometheus and Grafana. 
+The active API artifact is expected to be available at `artifacts/models/production_model_bundle.pkl` when a promoted bundle exists. If the bundle is absent, the application may use the legacy artifacts configured by the inference pipeline, including the calibrated classifier, TF-IDF vectorizer, category encoder, and rating scaler. Keep the artifact paths consistent with the actual configuration in your checkout.
 
----
+The label meaning depends on the source dataset and its label mapping. Do not describe this model as a detector of all AI-written content unless its training data and evaluation specifically support that claim.
 
-# Key Features
+### 2. Sentiment analysis
 
-## Review Summarization
+The sentiment feature calls Hugging Face Inference Providers using the model `cardiffnlp/twitter-roberta-base-sentiment-latest`. It maps the model's output classes to negative, neutral, and positive labels.
 
-Generate a concise summary of thousands of customer reviews within seconds.
+The model was trained on Twitter-style text, so its performance on product reviews must be measured rather than assumed. The returned confidence is the provider's model score, not a calibrated guarantee that the prediction is correct. If the provider is not configured or is unavailable, the API should return a controlled error and the extension should indicate that sentiment is unavailable rather than silently substituting a different model.
 
-Example:
+### 3. Review summarization
 
-> Customers appreciate the battery life and display quality, while several users report heating issues during gaming.
+The summarization feature sends user-supplied or otherwise authorized reviews to the Groq API. The model name is configured using `GROQ_MODEL`. The backend processes review batches within configured limits and returns a structured summary response.
 
----
+The project does not include an authorized Amazon review collection provider by default. A collection route that depends on an unconfigured provider should return a clear `503` response; it must not claim that reviews were collected when no provider is configured. Use a data source whose terms authorize your intended access and processing.
 
-## Sentiment Analysis
+## Architecture
 
-Analyze customer opinions and classify reviews as:
+### High-level system architecture
 
--  Positive 
--  Neutral 
--  Negative 
+```mermaid
+flowchart TD
+    U[Shopper] --> P[Supported Product Page]
+    P --> CE[Chrome Extension]
+    CE --> CS[Content Script: Extract Permitted Review Data]
+    CS --> BG[Background Service Worker]
+    BG --> API[FastAPI REST API]
 
-The extension also displays the percentage distribution of each sentiment.
-
----
-
-## Common Pros
-
-Automatically identify frequently mentioned positive features.
-
-Example:
-
--  Excellent Battery 
--  Premium Design 
--  Fast Charging 
--  Smooth Performance 
-
----
-
-## Common Complaints
-
-Automatically identify frequently mentioned issues.
-
-Example:
-
--  Heating Problem 
--  Camera Quality 
--  Slow Updates 
--  Poor Speakers 
-
----
-
-## Fake Review Detection
-
-Detect suspicious reviews using a custom machine learning model trained on publicly available fake-review datasets.
-
-The extension provides:
-
--  Fake Review Percentage 
--  Trust Score 
--  Genuine Review Ratio 
-
----
-
-## Topic Extraction
-
-Automatically classify reviews into major topics such as:
-
--  Battery 
--  Camera 
--  Display 
--  Gaming 
--  Software 
--  Performance 
--  Charging 
--  Build Quality 
-
----
-
-## AI Buying Recommendation
-
-Generate an intelligent recommendation based on review quality.
-
-Examples:
-
--  Recommended 
--  Recommended for Students 
--  Good for Gaming 
--  Not Recommended 
-
----
-
-## Product Trust Score
-
-Generate an overall product quality score between 0 and 100 based on multiple AI signals.
-
----
-
-## Review Search (Future Enhancement)
-
-Users can ask natural language questions.
-
-Example:
-
-> Does this phone overheat?
-
-The AI searches relevant reviews and generates a concise answer.
-
----
-
-# Workflow
-
-```
+    API --> PRE[Validation and Text Preprocessing]
+    PRE --> FAKE[Custom Fake-Review Classifier]
+    PRE --> SENT[Hugging Face Sentiment API]
+    PRE --> SUM[Groq Review Summarization API]
+
+    FAKE --> AGG[Combine Available Results]
+    SENT --> AGG
+    SUM --> AGG
+
+    AGG --> DB[(Configured SQLAlchemy Database)]
+    AGG --> RESP[Structured API Response]
+    RESP --> CE
+    CE --> DASH[InsightCart Popup Results]
+
+    API -. metrics .-> PROM[Prometheus]
+    PROM --> GRAF[Grafana]
+    TRAIN[Training Pipeline] --> MLF[MLflow Tracking]
+    TRAIN --> DVC[DVC Dataset and Artifact Versioning]
+    TRAIN --> MODEL[Versioned Model Artifacts]
+    MODEL --> FAKE
 ```
 
-```
-User Opens Amazon Product Page
+### Machine learning and MLOps lifecycle
 
-        │
-
-Chrome Extension Extracts Product Information
-
-        │
-
-Extract Review Text
-
-        │
-
-Send Reviews to FastAPI Backend
-
-        │
-
-Preprocessing Pipeline
-
-        │
-
-──────────────────────────────────────────
-│              AI Pipeline               │
-│                                        │
-│ Sentiment Analysis                     │
-│ Review Summarization                   │
-│ Topic Extraction                       │
-│ Fake Review Detection                  │
-│ Product Recommendation                 │
-──────────────────────────────────────────
-
-        │
-
-Generate Final Product Insights
-
-        │
-
-Store Results in PostgreSQL
-
-        │
-
-Return Response to Chrome Extension
-
-        │
-
-Interactive Dashboard Displayed
+```mermaid
+flowchart LR
+    RAW[Raw Labeled Dataset] --> VALID[Validate and Clean]
+    VALID --> SPLIT[Stratified Data Splits]
+    SPLIT --> FEAT[Fit Text and Metadata Features on Training Data]
+    FEAT --> TRAIN[Train Candidate Models]
+    TRAIN --> EVAL[Evaluate on Validation Data]
+    EVAL --> SELECT[Select Candidate]
+    SELECT --> HOLDOUT[Evaluate on Promotion Holdout]
+    HOLDOUT --> GATE{Promotion Gate Passes?}
+    GATE -- No --> KEEP[Keep Existing Production Model]
+    GATE -- Yes --> PROMOTE[Opt-in Model Promotion]
+    PROMOTE --> SERVE[FastAPI Inference]
+    TRAIN -. metrics and parameters .-> MLF[MLflow]
+    RAW -. data versioning .-> DVC[DVC]
+    PROMOTE -. artifact versioning .-> DVC
 ```
 
----
-
-# System Architecture
-
-```
-```
-
-```
-Chrome Extension (React + Manifest V3)
-
-        │
-
-Content Script
-
-        │
-
-Background Service Worker
-
-        │
-
-REST API
-
-        │
-
-FastAPI Backend
-
-        │
-
-────────────────────────────────────────────
-
-Text Preprocessing
-
-↓
-
-Sentiment Model
-
-↓
-
-Summarization Model
-
-↓
-
-Fake Review Detection Model
-
-↓
-
-Recommendation Engine
-
-↓
-
-Database
-
-↓
-
-MLflow
-
-↓
-
-Docker
-
-↓
-
-Monitoring
-
-────────────────────────────────────────────
-```
-
----
-
-# Local Technology Stack
-
-## Frontend
-
--  React
--  Vite
--  Tailwind CSS
--  JavaScript
--  Chrome Extension Manifest V3
-
----
-
-## Backend
-
--  FastAPI
--  Python
--  Pydantic
--  Uvicorn
-
----
-
-## Database
-
--  SQLite for the default local app configuration
--  Optional PostgreSQL or Neon database when a project-specific external DB is configured
-
-Stores:
-
--  Product information
--  Review history
--  User feedback
--  Prediction results
--  Model metadata
-
----
-
-# Machine Learning Stack
-
-## Pre-trained Models (Hugging Face)
-
-These models are used because they provide high-quality NLP capabilities without requiring large-scale training.
-
-### Review Summarization
-
-Suggested models:
-
-- `facebook/bart-large-cnn` (high quality, heavier) 
-- `google/flan-t5-base` or `google/flan-t5-small` (lighter alternatives) 
-
-Purpose:
-
--  Summarize large collections of reviews into concise paragraphs. 
-
----
-
-### Sentiment Analysis
-
-Suggested model:
-
-- `cardiffnlp/twitter-roberta-base-sentiment-latest` 
-
-Purpose:
-
--  Predict Positive, Neutral, or Negative sentiment. 
-
-### InsightCart sentiment API integration
-
-Sentiment runs as a separate, optional Hugging Face service. It does not replace
-the fake/genuine classifier: a review may be negative and genuine, or positive
-and fake. `POST /api/v1/sentiment/analyze` handles one review, and
-`POST /api/v1/sentiment/analyze/batch` supports up to 40 extension reviews with
-at most four concurrent provider calls. If sentiment is unavailable, the
-extension still shows authenticity results and marks sentiment unavailable.
-
-The backend uses `InferenceClient(provider="hf-inference")` and
-`cardiffnlp/twitter-roberta-base-sentiment-latest`. Hugging Face currently
-documents this model for inference providers and maps its classes as 0 negative,
-1 neutral, and 2 positive. The model is English and trained on TweetEval/Twitter
-text, so product-review suitability is not assumed. Confidence is the model's
-returned softmax score, not a calibrated probability of correctness. Review
-text is sent to Hugging Face for inference; do not submit sensitive or personally
-identifying content. The API avoids logging review text and credentials.
-
-Server configuration in `.env` (never put `HF_TOKEN` in a `VITE_` variable):
-
-```env
-HF_SENTIMENT_ENABLED=true
-HF_TOKEN=your_hugging_face_user_access_token
-HF_SENTIMENT_MODEL=cardiffnlp/twitter-roberta-base-sentiment-latest
-HF_SENTIMENT_TIMEOUT=30
-HF_SENTIMENT_MAX_LENGTH=512
-```
-
-`HF_SENTIMENT_MAX_LENGTH` is a character limit for this hosted endpoint. The
-provider call has a timeout and no automatic retry. Missing configuration,
-provider authentication failures, rate limits, and outages return controlled
-errors; there is no silent model fallback. The hosted provider requires a
-Hugging Face token with Inference Providers access. The token remains in the
-backend environment and is never returned to clients.
-
-Run the API and the Chrome extension locally:
-
-```bash
-python -m pip install -r requirements.txt
-# Add the server-only HF settings above to your existing .env.
-DEBUG=false python -m uvicorn app.main:app --reload
-```
-
-The same backend configuration is passed into the existing Compose service from
-the ignored `.env` file. After adding the required `HF_*` values there, run the
-container stack with:
-
-```bash
-docker compose up --build
-```
-
-Load `chrome_extension/` as an unpacked extension in Chrome, then open an Amazon
-review page and select **Analyze Reviews**. Each review card displays authenticity
-and sentiment in separate sections. To call the API directly:
-
-```bash
-curl -X POST http://localhost:8000/api/v1/sentiment/analyze \
-  -H 'Content-Type: application/json' \
-  -d '{"review":"The packaging was simple and the headphones sound excellent."}'
-```
-
-Response fields are `success`, `sentiment.label`, `sentiment.confidence`,
-`model.provider`, `model.name`, and `processing_time_ms`. A sample response is
-illustrative; runtime confidence and latency come from the inference result.
-Errors use FastAPI's `detail` object with a stable `code` and safe `message`.
-
-Automated API tests use mocked inference and require no token or network:
-
-```bash
-DEBUG=false pytest -q
-flake8 app src tests scripts
-```
-
-For a real quality evaluation, prepare a manually labeled CSV with `text,label`
-columns and labels `positive`, `neutral`, or `negative`, then run:
-
-```bash
-python scripts/evaluate_hf_sentiment.py \
-  --input /path/to/manually-labeled-product-reviews.csv \
-  --output artifacts/sentiment-evaluation.json
-```
-
-This records the model, date, dataset SHA-256, sample count, per-class
-precision/recall/F1, accuracy, and confusion matrix without logging review text.
-Set `SENTIMENT_EVALUATION_MLFLOW=true` to log aggregate metrics to the configured
-MLflow tracking server. No product-review evaluation metrics are claimed until
-that script is run against a representative, manually labeled dataset.
-
-Example successful response (illustrative values only):
-
-```json
-{
-  "success": true,
-  "sentiment": {"label": "positive", "confidence": 0.93},
-  "model": {
-    "provider": "huggingface",
-    "name": "cardiffnlp/twitter-roberta-base-sentiment-latest"
-  },
-  "processing_time_ms": 420.0
-}
-```
-
----
-
-### Embeddings (Optional)
-
-Suggested model:
-
-- `sentence-transformers/all-MiniLM-L6-v2` 
-
-Purpose:
-
--  Semantic search and future review Q&A. 
-
----
-
-# Custom Machine Learning Models
-
-Unlike summarization and sentiment, these models will be trained by you.
-
-## Fake Review Detection
-
-Possible algorithms:
-
--  XGBoost 
--  LightGBM 
--  Random Forest 
--  Logistic Regression 
--  Fine-tuned DistilBERT (advanced) 
-
-Purpose:
-
--  Predict whether a review is genuine or fake. 
-
----
-
-## Product Recommendation Model (Optional)
-
-Predict:
-
--  Buy 
--  Consider 
--  Avoid 
-
-based on review statistics and product features.
-
----
-
-# Datasets
-
-## Amazon Reviews Dataset
-
-Contains:
-
--  Review Text 
--  Rating 
--  Product ID 
--  Review Date 
--  Verified Purchase 
--  Helpful Votes 
-
-Uses:
-
--  Topic extraction 
--  Summarization experiments 
--  Sentiment evaluation 
--  Product analytics 
-
----
-
-## Fake Review Dataset
-
-Contains:
-
--  Review Text 
--  Label (Fake/Genuine) 
-
-Used for:
-
--  Training the fake review detection model. 
-
----
-
-## Additional Datasets (Optional)
-
--  Yelp Reviews Dataset 
--  IMDB Review Dataset (for experimentation) 
--  Amazon Customer Reviews (category-specific subsets) 
-
----
-
-# MLOps Pipeline
-
-The project follows a complete MLOps lifecycle.
-
-### Step 1
-
-Collect and preprocess datasets.
-
-↓
-
-### Step 2
-
-Train multiple ML models.
-
-↓
-
-### Step 3
-
-Track experiments using MLflow.
-
-↓
-
-### Step 4
-
-Compare metrics.
-
-↓
-
-### Step 5
-
-Register the best-performing model.
-
-↓
-
-### Step 6
-
-Package the model using Docker.
-
-↓
-
-### Step 7
-
-Run the local Docker Compose stack on your MacBook.
-
-↓
-
-### Step 8
-
-Monitor production with Prometheus and Grafana.
-
-↓
-
-### Step 9
-
-Collect user feedback.
-
-↓
-
-### Step 10
-
-Retrain models periodically.
-
----
-
-# MLflow
-
-MLflow is used to manage the machine learning lifecycle.
-
-### Experiment Tracking
-
-Track:
-
--  Accuracy 
--  Precision 
--  Recall 
--  F1 Score 
--  Training Time 
--  Hyperparameters 
-
----
-
-### Model Registry
-
-Maintain multiple versions of trained models.
-
-Example:
-
--  Version 1 
--  Version 2 
--  Version 3 
-
-Rollback to a previous version if necessary.
-
----
-
-### Artifact Storage
-
-Store:
-
--  Model files 
--  Evaluation reports 
--  Confusion matrices 
--  Feature importance plots 
-
----
-
-# Docker
-
-The project runs locally with Docker Compose.
-
-Containers include:
-
--  FastAPI backend
--  MLflow tracking server
--  Prometheus
--  Grafana
--  Optional local PostgreSQL or external database configuration
-
-Docker Compose orchestrates the local MLOps stack for development and validation.
-
----
-
-# CI/CD (GitHub Actions)
-
-Whenever code is pushed to GitHub:
-
-1.  Install dependencies.
-2.  Run linting.
-3.  Execute unit tests.
-4.  Validate the Docker configuration.
-5.  Build the Docker image locally on the runner.
-6.  Report failures clearly without any cloud credentials or deployment steps.
-
----
-
-# Local Monitoring
-
-## Prometheus
-
-Prometheus scrapes the FastAPI metrics endpoint with the service name and port from the Docker network.
-
-## Grafana
-
-Grafana connects to Prometheus as its datasource and persists dashboards locally in Docker volumes.
-
-## MLflow
-
-MLflow stores experiment metadata and trace data locally in the configured tracking store, which can be SQLite or a local file-backed directory.
-
----
-
-# Monitoring
-
-## Prometheus
-
-Collect metrics such as:
-
--  API request count 
--  Request latency 
--  Error rate 
--  Prediction frequency 
-
-i want to make this project so first give dataset to implement train model machine learning 
-
-
-```
+The final test split is reserved for final reporting and must not be used for model selection or promotion. Promotion compares the candidate and active production model on the same promotion-holdout records. A promotion decision is a controlled local workflow, not a guarantee of real-world performance.
+
+## Technology Stack
+
+| Area | Technologies |
+|---|---|
+| Browser extension | Chrome Extension Manifest V3, JavaScript, HTML, CSS |
+| UI components | React and Vite where used by the current frontend |
+| Backend API | Python, FastAPI, Pydantic, Uvicorn |
+| Custom ML model | scikit-learn, TF-IDF, calibrated Linear SVM and supporting preprocessing artifacts as configured |
+| Sentiment inference | Hugging Face Inference Providers |
+| Review summarization | Groq API |
+| Database | SQLAlchemy with the database configured for the current environment; SQLite may be used locally, PostgreSQL is optional if configured |
+| Experiment tracking | MLflow |
+| Dataset and artifact versioning | DVC |
+| Containerization | Docker and Docker Compose |
+| Monitoring | Prometheus and Grafana, when configured |
+| CI | GitHub Actions |
+| Testing and linting | pytest and flake8 |
+
+## Repository Structure
+
+The exact files can differ as implementation evolves. The following is the intended high-level organization; retain the paths that exist in your checkout and do not create empty files solely to match this diagram.
+
+```text
 InsightCart/
-│
 ├── app/
 │   ├── main.py
 │   ├── routes.py
 │   ├── schemas.py
 │   ├── models.py
-│   └── __init__.py
-│
+│   └── services.py
 ├── artifacts/
 │   ├── models/
-│   │   ├── best_linear_svm_calibrated.pkl
-│   │   ├── tfidf_vectorizer.pkl
-│   │   └── category_encoder.pkl
-│   │
 │   ├── reports/
-│   │   ├── classification_report.txt
-│   │   ├── confusion_matrix.png
-│   │   └── model_comparison.csv
-│   │
 │   └── plots/
-│       ├── accuracy_comparison.png
-│       ├── f1_comparison.png
-│       └── roc_auc_comparison.png
-│
 ├── chrome_extension/
 │   ├── manifest.json
 │   ├── popup/
@@ -739,34 +184,17 @@ InsightCart/
 │   ├── content/
 │   ├── assets/
 │   └── icons/
-│
 ├── config/
 │   ├── config.yaml
 │   ├── params.yaml
 │   └── schema.yaml
-│
 ├── data/
 │   ├── raw/
-│   │   └── fake_reviews_dataset.csv
-│   │
 │   ├── processed/
-│   │   ├── clean_dataset.csv
-│   │   └── preprocessed_dataset.csv
-│   │
 │   └── external/
-│
 ├── docs/
-│   ├── architecture.png
-│   ├── workflow.png
-│   └── screenshots/
-│
-├── logs/
-│
 ├── notebooks/
-│   └── 01_AI_Generated_Review_Detection.ipynb
-│
 ├── src/
-│   │
 │   ├── components/
 │   │   ├── data_ingestion.py
 │   │   ├── data_validation.py
@@ -774,568 +202,436 @@ InsightCart/
 │   │   ├── model_trainer.py
 │   │   ├── model_evaluation.py
 │   │   └── model_pusher.py
-│   │
 │   ├── pipeline/
 │   │   ├── review_detection_training_pipeline.py
 │   │   └── review_detection_inference_pipeline.py
-│   │
 │   ├── utils/
-│   │   ├── common.py
-│   │   └── preprocessing.py
-│   │
 │   ├── constants.py
 │   ├── exception.py
-│   ├── logger.py
-│   └── __init__.py
-│
+│   └── logger.py
 ├── tests/
-│   ├── test_preprocessing.py
-│   ├── test_training.py
-│   └── test_prediction.py
-│
-├── .dvc/
-│
 ├── .github/
 │   └── workflows/
-│       ├── ci.yml
-│       └── cd.yml
-│
 ├── Dockerfile
 ├── docker-compose.yml
 ├── dvc.yaml
 ├── requirements.txt
 ├── setup.py
 ├── README.md
-├── LICENSE
 └── .gitignore
 ```
 
----
+## Dataset
 
-## Reproducible Candidate Training
+The custom fake-review classifier requires a labeled dataset with review text and a target label distinguishing the classes your model is intended to learn. Depending on the training pipeline, metadata such as rating and category may also be required.
 
-The DVC `train_candidate` stage uses the DVC-tracked raw CSV and writes all
-candidate files under `artifacts/experiments/dvc-candidate/`. It does not touch
-production model files. Repeated `dvc repro` runs reuse the stage cache while
-its dataset and code dependencies remain unchanged. The preprocessing stage
-drops incomplete required rows and exact duplicate records before splitting;
-the stratified 60/10/10/20 train/validation/promotion/test split fits TF-IDF,
-category encoding, and rating scaling on training rows only. Evaluation reports
-binary precision, recall, and F1,
-accuracy, confusion matrix, dataset SHA-256, and a fingerprint of the held-out
-records.
+Expected raw dataset path in this project:
 
-```bash
-dvc status
-dvc pull data/raw/fake_reviews_dataset.csv.dvc
-sha256sum data/raw/fake_reviews_dataset.csv
-dvc repro train_candidate
+```text
+data/raw/fake_reviews_dataset.csv
 ```
 
-For an isolated run without DVC caching, use
-`python src/pipeline/review_detection_training_pipeline.py --dataset data/raw/fake_reviews_dataset.csv --output-dir artifacts/experiments/manual-candidate`.
-Candidate selection uses validation F1 with ROC-AUC as a tie-breaker; the
-selected candidate is evaluated once on the held-out test split. The test set
-is not used for model selection. MLflow logging failures block a successful
-evaluation record. Metrics and candidate metadata are stored in the training
-experiment, separate from the API tracing experiment.
+Confirm the exact column names and label values against `config/schema.yaml` and the data-validation code before training. Do not assume that every public dataset uses the same schema or that a dataset's `fake` label means specifically AI-generated text; some datasets label deceptive or synthetic reviews using different definitions.
 
-Promotion is evaluated on a dedicated promotion holdout, separate from both
-the candidate-selection validation split and the final test split. The final
-test set is reported once and is not used for promotion decisions.
-Production promotion is opt-in and requires `--promote`. The active production
-model is evaluated on the same promotion rows as the candidate. The gate fails
-closed unless all four metrics are available, the evaluation identity matches,
-and the candidate improves the configured primary metric by the configured minimum. Metric
-floors default to `0` and are technical defaults,
-not approved business requirements; configure `MODEL_MIN_ACCURACY`,
-`MODEL_MIN_PRECISION`, `MODEL_MIN_RECALL`, `MODEL_MIN_F1`,
-`MODEL_PRIMARY_METRIC` (default `f1`), and `MODEL_MINIMUM_IMPROVEMENT` after
-confirming acceptable false-positive/false-negative costs. A single held-out
-score is not a statistical reliability guarantee.
+Recommended dataset handling:
 
-The recorded manual candidate was rejected because its promotion holdout F1 was
-0.8971 while production scored 0.9545 on those same rows. The gate compares
-those matched promotion metrics; its validation F1 of 0.8975 and final test F1
-of 0.8996 are not promotion inputs. Each run writes its full decision and
-reason to `promotion_decision.json`.
+- Keep the original dataset unchanged in `data/raw/`.
+- Use the validation and transformation pipeline to create processed data.
+- Remove exact duplicates and handle missing required values according to the configured schema.
+- Split the data before fitting feature transformations.
+- Fit TF-IDF, category encoding, and any scaling only on the training partition.
+- Use a stratified split where class distributions permit it.
+- Record the dataset checksum and evaluation metadata.
+- Check the dataset license, permitted uses, and any redistribution restrictions before committing or sharing it.
 
-```bash
-MODEL_MIN_F1=0.90 MODEL_MINIMUM_IMPROVEMENT=0.01 \
-        python src/pipeline/run_v2_experiment.py --promote
-```
+## Machine Learning Workflow
 
-This command reruns training and only promotes after the gate passes. The API
-loads `artifacts/models/production_model_bundle.pkl` when present; verify the
-loaded `model_version` in the API startup log. A rejected candidate leaves the
-bundle and its checksum unchanged.
+The custom classifier's training workflow is:
 
-After an approved local promotion, record the new production artifact versions
-and upload them to the configured DVC remote before sharing that model with a
-clean checkout:
+1. Ingest the versioned raw dataset.
+2. Validate required columns, labels, data types, and missing values.
+3. Remove duplicates and preprocess review text.
+4. Create separate training, validation, promotion-holdout, and final-test partitions according to the pipeline configuration.
+5. Fit text and metadata transformations on training data only.
+6. Train the configured candidate algorithms.
+7. Compare candidates using validation metrics, with the configured primary metric and tie-breaker.
+8. Evaluate the selected candidate on the promotion holdout and compare it with the active production model on the same records.
+9. Promote only when explicitly requested and when the configured promotion gate passes.
+10. Save reports and versioned artifacts; log training parameters and aggregate metrics to MLflow when configured.
 
-```bash
-dvc add artifacts/models/production_model_bundle.pkl \
-        artifacts/models/best_linear_svm_calibrated.pkl \
-        artifacts/models/category_encoder.pkl \
-        artifacts/models/tfidf_vectorizer.pkl \
-        artifacts/models/rating_scaler.pkl
-dvc push
-```
+Useful evaluation outputs may include accuracy, precision, recall, F1 score, ROC-AUC where applicable, confusion matrix, dataset SHA-256, and a fingerprint of held-out records. Report metrics from your actual run; do not copy example values into project claims.
 
-The approved bundle is the API activation artifact; the separate DVC update is
-the versioned distribution step. Keep the `.dvc` pointer updates in the same
-review as the promotion decision.
+## API Overview
 
-### Audit and Promotion Commands
+Start the backend and open the interactive API documentation at:
 
-Check the current dataset and DVC state, then run the cached candidate stage:
-
-```bash
-dvc status
-shasum -a 256 data/raw/fake_reviews_dataset.csv
-dvc repro train_candidate
-```
-
-Inspect candidate and same-holdout production metrics in
-`artifacts/experiments/dvc-candidate/model_metadata.json` and
-`evaluation_results.json`. Query recent training runs from the local MLflow
-database:
-
-```bash
-MLFLOW_TRACKING_URI=sqlite:///mlflow.db ./venv/bin/python -c \
-        'import mlflow; mlflow.set_tracking_uri("sqlite:///mlflow.db"); e=mlflow.get_experiment_by_name("InsightCart AI Generated Review Detection"); print(mlflow.search_runs([e.experiment_id])[ ["status", "metrics.Accuracy", "metrics.Precision", "metrics.Recall", "metrics.F1 Score", "tags.promotion_decision", "tags.promotion_reason"] ].to_string(index=False) if e else "No training experiment")'
-```
-
-To try promotion explicitly, first record the current production bundle checksum,
-then run into a separate candidate directory. The command re-evaluates the
-active model on the promotion holdout and only activates a candidate that passes
-the configured gate:
-
-```bash
-shasum -a 256 artifacts/models/production_model_bundle.pkl 2>/dev/null || true
-MODEL_MIN_ACCURACY=0 MODEL_MIN_PRECISION=0 MODEL_MIN_RECALL=0 MODEL_MIN_F1=0 \
-        MODEL_PRIMARY_METRIC=f1 MODEL_MINIMUM_IMPROVEMENT=0.01 \
-        ./venv/bin/python src/pipeline/run_v2_experiment.py \
-                --dataset data/raw/fake_reviews_dataset.csv \
-                --output-dir artifacts/experiments/manual-candidate --promote
-shasum -a 256 artifacts/models/production_model_bundle.pkl 2>/dev/null || true
-```
-
-For a rejected candidate, the before/after bundle checksums must match. Confirm
-the active version without exposing the serialized model contents:
-
-```bash
-./venv/bin/python -c 'import os, joblib; p="artifacts/models/production_model_bundle.pkl"; print(joblib.load(p).get("model_version", "bundle") if os.path.exists(p) else "legacy:" + os.path.basename("artifacts/models/best_linear_svm_calibrated.pkl"))'
-```
-
-If no promoted bundle exists, the API uses the legacy DVC-tracked model,
-vectorizer, encoder, and scaler files. The API logs `model_name` and
-`model_version` when loading a promoted bundle. In CI, training is blocked until the repository has a
-reachable `DVC_REMOTE_URL` secret; GitHub Actions has not been run remotely as
-part of this local audit.
-
-### Hosted Training Prerequisite
-
-The checked-in DVC remote is local (`../dvc_storage`) and cannot be reached by
-GitHub-hosted runners. Push-triggered and manual training require a repository
-secret named `DVC_REMOTE_URL` pointing to an accessible DVC remote. Configure
-any provider-specific authentication as GitHub secrets/environment variables.
-The workflow pulls the tracked raw dataset, runs `dvc repro train_candidate`,
-and uploads candidate results; it never promotes or commits model artifacts.
-Without that remote configuration, hosted training is intentionally blocked.
-
-## API Tracing
-
-MLflow 3 application traces are stored separately from training runs in the
-`InsightCart-API-Tracing` experiment. Run commands from the repository root so
-the relative `sqlite:///mlflow.db` URI points to this project's existing
-`mlflow.db`. On macOS with Docker Desktop, the host MLflow process must listen
-on a Docker-reachable interface, and its Host-header allowlist must include the
-Docker Desktop hostname. This does not disable MLflow's security middleware:
-
-```bash
-./venv/bin/mlflow server --backend-store-uri sqlite:///mlflow.db --host 0.0.0.0 --port 5000 \
-        --allowed-hosts localhost,127.0.0.1,host.docker.internal:5000
-```
-
-Use this host binding only on a trusted development machine and restrict access
-with the host firewall. Do not expose the tracking server publicly. For local
-FastAPI execution, use `MLFLOW_TRACKING_URI=http://127.0.0.1:5000`; Docker
-Compose already overrides that with `http://host.docker.internal:5000` for the
-API container. Verify the effective setting without dumping the full
-environment:
-
-```bash
-docker compose exec -T insightcart-api sh -c \
-        'printf "MLFLOW_TRACING_ENABLED=%s\\n" "$MLFLOW_TRACING_ENABLED"; case "$MLFLOW_TRACKING_URI" in http://host.docker.internal:5000) echo MLFLOW_TRACKING_URI=expected;; *) echo MLFLOW_TRACKING_URI=unexpected;; esac'
-```
-
-The image copies `artifacts/` at build time; it does not pull or mount model
-files at runtime. In a clean checkout, hydrate the DVC-managed production model
-files before building (with the configured DVC remote credentials available to
-the build operator):
-
-```bash
-dvc pull artifacts/models/best_linear_svm_calibrated.pkl.dvc \
-        artifacts/models/category_encoder.pkl.dvc \
-        artifacts/models/tfidf_vectorizer.pkl.dvc
-```
-
-Rebuild and start the existing API service after backend source changes:
-
-```bash
-docker compose up --build -d insightcart-api
-curl -fsS http://localhost:8000/health
-```
-
-The extension's actual request is `POST http://localhost:8000/api/v1/review/predict/batch`
-with `{ "reviews": [...] }`. Each review includes `review` (3-5000 chars),
-`rating` (1-5), and `category`; the extractor also supplies `id`, `title`,
-`reviewer`, `date`, `verified_purchase`, and `helpful_votes`, which the request
-schema ignores when not declared. To test in Chrome, open DevTools Network,
-open a supported Amazon product or review page, open the InsightCart popup, and
-click **Analyze Reviews**. Confirm the batch URL, request JSON, and HTTP 200.
-The extension service worker console logs the route, status, and returned trace
-ID without logging review content. Backend route and trace lifecycle messages
-are available via `docker compose logs -f insightcart-api`.
-
-Copy the `X-MLflow-Trace-Id` response header from that request and query the
-same host tracking server. The verifier does not create synthetic traces:
-
-```bash
-MLFLOW_TRACKING_URI=http://127.0.0.1:5000 \
-        ./venv/bin/python scripts/verify_mlflow_tracing.py --route batch --trace-id <TRACE_ID>
-```
-
-Open the `InsightCart-API-Tracing` experiment's **Traces** view in the MLflow
-UI. For a local (non-Docker) API, start it with
-`MLFLOW_TRACKING_URI=http://127.0.0.1:5000 ./venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000`.
-CI disables tracing for ordinary tests so they do not require an external
-tracking server.
-
-## Project Steps:
-
-Based on your current progress, you've completed the Machine Learning + Core MLOps pipeline for the first AI feature.
-
-✅ Phase 1: Research & Experimentation (Completed)
-Dataset selection
-EDA
-Data cleaning
-Text preprocessing
-Feature engineering
-Train-test split
-Train 7 models
-Hyperparameter tuning
-Calibrated Linear SVM
-MLflow experiment tracking
-Notebook (01_AI_Generated_Review_Detection.ipynb)
-✅ Phase 2: Project Structure (Completed)
-Project folders
-src/
-artifacts/
-config/
-utils/
-components/
-pipeline/
-✅ Phase 3: DVC (Completed)
-DVC initialized
-Dataset tracked
-Model tracking
-Local DVC storage
-✅ Phase 4: Production Code (Completed)
-src/
-│
-├── logger.py
-├── exception.py
-├── constants.py
-│
-├── utils/
-│   ├── common.py
-│   └── preprocessing.py
-│
-├── components/
-│   ├── data_ingestion.py
-│   ├── data_validation.py
-│   ├── data_transformation.py
-│   ├── model_trainer.py
-│   ├── model_evaluation.py
-│   └── model_pusher.py
-│
-└── pipeline/
-    └── review_detection_training_pipeline.py
-
-At this point, you have a production training pipeline.
-
-🚀 Phase 5: Model Serving (Next)
-
-This is the next major milestone.
-
-Step 13
-
-Create:
-
-src/pipeline/review_detection_inference_pipeline.py
-
-Purpose:
-
-User Review
-
-↓
-
-Load Model
-
-↓
-
-Load TF-IDF
-
-↓
-
-Load Category Encoder
-
-↓
-
-Clean Text
-
-↓
-
-Create Feature Vector
-
-↓
-
-Predict
-
-↓
-
-Return JSON
-
-This replaces the prediction function you wrote in the notebook.
-
-Step 14
-
-Create:
-
-app/
-│
-├── main.py
-├── schemas.py
-├── routes.py
-└── services.py
-
-Build a FastAPI backend.
-
-Example endpoints:
-
-POST /predict
-
-POST /health
-
-GET /metrics
-Step 15
-
-Move prediction logic from notebook
-
-Notebook:
-
-predict_review(...)
-
-↓
-
-Production:
-
-ReviewDetectionInferencePipeline.predict(...)
-Step 16
-
-Test API using Swagger
-
+```text
 http://localhost:8000/docs
+```
 
-Example request
+The current project includes or documents these feature routes. Verify the exact route prefixes in `app/main.py` and the router modules before relying on them.
 
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `GET` | `/health` | Health check, if registered by the application |
+| `GET` | `/metrics` | Prometheus metrics, if metrics instrumentation is enabled |
+| `POST` | `/api/v1/review/predict/batch` | Batch fake-review predictions used by the extension |
+| `POST` | `/api/v1/sentiment/analyze` | Analyze one review's sentiment |
+| `POST` | `/api/v1/sentiment/analyze/batch` | Analyze a batch of reviews for sentiment |
+| `POST` | `/api/v1/review-summary/summarize` | Summarize reviews supplied in the request |
+| `GET` | `/api/v1/review-summary/health` | Check review-summary service configuration |
+| `POST` | `/api/v1/review-summary/products/{product_id}/analyze` | Product-level analysis requiring a configured review provider |
+| `GET` | `/api/v1/review-summary/products/{product_id}` | Retrieve the current product summary, if available |
+| `GET` | `/api/v1/review-summary/products/{product_id}/history` | Retrieve summary history, if implemented and configured |
+
+The review-summary product collection route depends on a configured, authorized provider. Without one, it should return `503 review_provider_not_configured`. The supplied-review summarization route can be used independently by sending reviews in the request body.
+
+### Example: fake-review prediction
+
+The actual request schema is authoritative. The batch route is used by the extension and expects a `reviews` array. A single-review example may look like this if the application exposes a matching single-review schema:
+
+```json
 {
   "review": "Excellent battery life and premium build quality.",
   "rating": 5,
   "category": "Electronics_5"
 }
+```
 
-Example response
+Example response shape; values are illustrative, not measured results:
 
+```json
 {
   "review_type": "Human-Written Review",
   "confidence": 94.63,
-  "reason": "The writing style resembles authentic human-written reviews."
+  "reason": "The model's prediction and explanation fields indicate the predicted class."
 }
-🚀 Phase 6: Chrome Extension
+```
 
-This is where InsightCart starts becoming your actual product.
+### Example: sentiment analysis
 
-chrome-extension/
-│
-├── manifest.json
-├── background.js
-├── content.js
-├── popup.html
-├── popup.js
-├── popup.css
-├── assets/
-└── icons/
+```bash
+curl -X POST http://localhost:8000/api/v1/sentiment/analyze \
+  -H 'Content-Type: application/json' \
+  -d '{"review":"The packaging was simple and the headphones sound excellent."}'
+```
 
-Workflow
+A successful response contains fields such as `success`, `sentiment.label`, `sentiment.confidence`, `model.provider`, `model.name`, and `processing_time_ms`, according to the current schema. Runtime values vary.
 
-Amazon Product Page
+### Example: review summarization
 
-↓
+```bash
+curl -X POST http://localhost:8000/api/v1/review-summary/summarize \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "product_id": "SKU-123",
+    "product_name": "Example headphones",
+    "reviews": [
+      {
+        "review_id": "r-1",
+        "title": "Comfortable",
+        "text": "Comfortable for long flights, but the case feels flimsy.",
+        "rating": 4,
+        "review_date": "2026-01-15",
+        "source": "authorized-provider"
+      }
+    ]
+  }'
+```
 
-Extract Reviews
+Only send reviews that you are authorized to process. Evidence references in the response can only point to review IDs included in the submitted data and supported by the service's validation rules.
 
-↓
+## Configuration
 
-Call FastAPI
+Create a local `.env` file in the repository root. Do not commit it.
 
-↓
+Example settings for the external AI providers:
 
-Receive Prediction
+```dotenv
+HF_SENTIMENT_ENABLED=true
+HF_TOKEN=your_hugging_face_user_access_token
+HF_SENTIMENT_MODEL=cardiffnlp/twitter-roberta-base-sentiment-latest
+HF_SENTIMENT_TIMEOUT=30
+HF_SENTIMENT_MAX_LENGTH=512
 
-↓
+GROQ_API_KEY=your_groq_api_key
+GROQ_MODEL=openai/gpt-oss-120b
+GROQ_TIMEOUT=60
+REVIEW_SUMMARY_MAX_REVIEWS=1000
+REVIEW_SUMMARY_BATCH_TOKENS=6000
+REVIEW_SUMMARY_CACHE_TTL_HOURS=24
+```
 
-Show Extension Popup
-🚀 Phase 7: Docker
+Use a Groq model that is currently available to your account. The model name above reflects a model that worked in the described development setup; model availability can change. If a provider rejects a model name, check the provider's current model list and update `GROQ_MODEL`.
 
-Create
+Keep provider credentials on the backend only. Never put `HF_TOKEN` or `GROQ_API_KEY` in frontend variables such as `VITE_*`, return them from an API endpoint, or print them in logs. Restart the backend after editing `.env`.
 
-Dockerfile
+Database, MLflow, DVC remote, and monitoring settings depend on your current configuration. Check `app/config.py`, `config/`, and `docker-compose.yml` for the actual variable names rather than adding undocumented environment variables.
 
-docker-compose.yml
+## Run Locally
 
-Run
+Run commands from the repository root.
 
-FastAPI
+### 1. Create and activate a virtual environment
 
-↓
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
 
-MLflow
+If your project already uses a virtual environment named `venv`, activate that environment instead and use its Python executable consistently.
 
-↓
+### 2. Configure environment variables
 
-PostgreSQL
+Create `.env` and add the backend settings needed for the features you want to run. The fake-review API can run with local model artifacts; Hugging Face sentiment and Groq summarization require their respective provider credentials.
 
-↓
+### 3. Verify model artifacts
 
-Prometheus
+Before starting the API, ensure the required model files are present. If the artifacts are DVC-managed and a DVC remote is configured, pull them as described in [DVC and MLflow](#dvc-and-mlflow).
 
-↓
+### 4. Start FastAPI
 
-Grafana
+```bash
+python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
 
-inside containers.
+If your app's import path differs, use the module path defined by your repository. The expected import path for the current project setup is `app.main:app`.
 
-🚀 Phase 8: CI/CD
+### 5. Verify the API
 
-GitHub Actions
+Open:
 
-Lint
+```text
+http://localhost:8000/docs
+```
 
-↓
+Call the health endpoint registered by your application and test the relevant prediction route. Check the terminal logs for startup errors, missing model artifacts, or provider configuration failures.
 
-Unit Tests
+## Run with Docker Compose
 
-↓
+Docker Compose is the recommended way to run the configured local service stack when its services and environment are ready.
 
-Build Docker
+```bash
+docker compose config
+docker compose up --build
+```
 
-↓
+To run services in the background:
 
-Push Image
+```bash
+docker compose up --build -d
+docker compose ps
+docker compose logs -f insightcart-api
+```
 
-🚀 Phase 9: Monitoring
+The service name may differ in your Compose file; use `docker compose config --services` to list the actual names.
 
-Integrate
+If the API image copies model artifacts during build, make sure the DVC-managed artifacts have been pulled before building. A container build does not automatically fetch files from a DVC remote unless the Dockerfile explicitly implements that step.
 
-Prometheus
-Grafana
+Stop the stack with:
 
-Monitor:
+```bash
+docker compose down
+```
 
-API latency
-Prediction count
-Error rate
-CPU
-Memory
-🚀 Phase 11: Expand InsightCart
+Persistent data stored in named volumes is not necessarily removed by this command. Review the Compose file before deleting volumes.
 
-Once the review detection feature is complete, add more AI capabilities.
+## Chrome Extension Setup
 
-1. Sentiment Analysis
+1. Start the FastAPI backend and verify the API is reachable.
+2. Open `chrome://extensions` in Chrome.
+3. Enable **Developer mode**.
+4. Select **Load unpacked** and choose the `chrome_extension/` directory.
+5. Open a supported product or review page.
+6. Open the InsightCart popup and select **Analyze Reviews**.
+7. Use Chrome DevTools to inspect the extension service worker and the page's Network panel if a request fails.
 
-Use:
+The extension's current batch authenticity request is documented as:
 
-cardiffnlp/twitter-roberta-base-sentiment-latest
-2. Review Summarization
+```text
+POST http://localhost:8000/api/v1/review/predict/batch
+```
 
-Use:
+The request body contains a `reviews` array. The documented review fields include `review`, `rating`, and `category`; other extracted fields are only accepted if declared by the request schema. The backend should validate request data and avoid logging full review text.
 
-facebook/bart-large-cnn
-3. Topic Extraction
+The extension can only analyze reviews that it successfully extracts and is permitted to access. Page markup varies, so extraction may not work on every product page or website. Do not assume that opening a product page means the extension has collected every review for that product.
 
-Use:
+## Training and Model Evaluation
 
-BERTopic
-KeyBERT
-4. Product Recommendation
+The custom classifier training pipeline is separate from the Hugging Face sentiment and Groq summarization services. The latter two are external inference services and are not trained by this project's fake-review training pipeline.
 
-Create a rule-based or ML recommendation engine.
+Check the available command-line options before running a long experiment:
 
-5. Trust Score
+```bash
+python src/pipeline/review_detection_training_pipeline.py --help
+```
 
-Combine:
+A documented manual candidate run is:
 
-Sentiment
-AI Review Detection
-Review count
-Rating
-Verified purchase ratio (if available)
-Complete InsightCart Roadmap
-Notebook (Research)
-        │
-        ▼
-DVC
-        │
-        ▼
-Production Components
-        │
-        ▼
-Training Pipeline
-        │
-        ▼
-Inference Pipeline
-        │
-        ▼
-FastAPI
-        │
-        ▼
-Chrome Extension
-        │
-        ▼
-Docker
-        │
-        ▼
-GitHub Actions
-        │
-        ▼
-Prometheus + Grafana
-        │
-        ▼
-Sentiment Analysis
-        │
-        ▼
-Review Summarization
-        │
-        ▼
-Topic Extraction
-        │
-        ▼
-Product Recommendation
-My recommendation
+```bash
+python src/pipeline/review_detection_training_pipeline.py \
+  --dataset data/raw/fake_reviews_dataset.csv \
+  --output-dir artifacts/experiments/manual-candidate
+```
 
+If the repository uses a dedicated DVC stage, run:
 
-python -m uvicorn app.main:app --reload
+```bash
+dvc status
+dvc repro train_candidate
+```
+
+Use the command supported by the checked-in pipeline and `dvc.yaml`; if the stage name or CLI arguments differ, follow those files. Candidate outputs should be written to a separate experiment directory and should not overwrite the active production model unless an explicit promotion workflow passes its configured gate.
+
+### Model promotion
+
+Promotion should be opt-in. The candidate and production model must be evaluated on the same promotion-holdout records. A failed gate must leave the active production artifact unchanged. The final test set must not be used to choose a candidate or decide whether to promote it.
+
+Promotion thresholds are project configuration, not universal standards. Set minimum accuracy, precision, recall, F1, primary metric, and minimum improvement based on the consequences of false positives and false negatives. A single holdout score is not proof of statistical reliability.
+
+## DVC and MLflow
+
+### DVC
+
+DVC versions the raw dataset and model artifacts without requiring large files to be committed directly to Git.
+
+Useful commands:
+
+```bash
+dvc status
+dvc pull
+dvc repro train_candidate
+dvc push
+```
+
+The repository's configured DVC remote must be accessible before `dvc pull` or `dvc push` can succeed. A local remote such as `../dvc_storage` is only available on machines where that path exists; GitHub-hosted runners need a reachable remote and any required credentials configured as repository or environment secrets.
+
+Do not put remote credentials in source control. Review the `.dvc` pointer files and the remote configuration before sharing the repository with another machine.
+
+### MLflow
+
+MLflow records training experiments, parameters, aggregate metrics, and artifacts. The project may also use a separate experiment for API tracing. Training metrics and request traces serve different purposes and should not be treated as the same experiment.
+
+If using a local SQLite-backed tracking store, start the MLflow server using the repository's configured URI and port. Example for a trusted local development environment:
+
+```bash
+mlflow server \
+  --backend-store-uri sqlite:///mlflow.db \
+  --host 127.0.0.1 \
+  --port 5000
+```
+
+Open `http://127.0.0.1:5000` to access the UI. If Docker containers need to reach a host-run MLflow server, configure the host binding and allowed-host settings according to your installed MLflow version and local network. Do not expose the tracking server publicly.
+
+## Monitoring
+
+When enabled in the current configuration:
+
+- **Prometheus** scrapes API metrics such as request counts, latency, and errors.
+- **Grafana** visualizes metrics using Prometheus as a data source.
+- **MLflow** stores training experiment results and, if configured, API traces.
+
+Confirm the actual metrics path, Compose service names, scrape targets, ports, and dashboard provisioning in `docker-compose.yml` and the Prometheus/Grafana configuration. Monitoring components are available only when their services and instrumentation are configured and running.
+
+## Testing and Code Quality
+
+Run tests from the repository root in the same virtual environment as the backend:
+
+```bash
+pytest -q
+flake8 app src tests scripts
+```
+
+Some repositories may not contain every directory shown in the lint command; adjust paths to match the checkout. API tests should mock external inference providers so that ordinary test runs do not require Hugging Face or Groq credentials or network access.
+
+A real sentiment evaluation requires a manually labeled, representative product-review dataset. For a three-class evaluation, use labels `positive`, `neutral`, and `negative` and report per-class precision, recall, F1, overall accuracy, and a confusion matrix. Do not claim product-review performance until the evaluation has actually been run.
+
+GitHub Actions should validate code with linting, tests, configuration checks, and Docker builds. A hosted training workflow that pulls DVC data also requires a reachable DVC remote and appropriate credentials. CI should not promote a production model automatically unless an explicitly reviewed release process allows it.
+
+## Security and Data Use
+
+- Keep `.env`, access tokens, and API keys out of Git.
+- Never expose provider credentials through the extension or browser-visible frontend code.
+- Do not log raw review text, credentials, or other sensitive payloads.
+- Use review sources and datasets only in ways permitted by their terms and licenses.
+- Tell users when review text is sent to external inference providers.
+- Treat authenticity, sentiment, and recommendation outputs as probabilistic assistance, not verified facts.
+- Restrict local monitoring and MLflow services to trusted development access.
+
+## Limitations and Future Work
+
+Current limitations and possible future improvements include:
+
+- Evaluate the custom classifier on a representative, manually verified dataset and monitor class imbalance and data leakage.
+- Evaluate the Twitter-trained sentiment model on product reviews before making quality claims.
+- Add an authorized review provider if automated product-level review collection is required.
+- Add semantic review search and natural-language review Q&A using embeddings.
+- Improve recommendation and trust-score logic only after defining and validating its inputs and evaluation criteria.
+- Add scheduled retraining and model-drift monitoring after reliable feedback and evaluation data are available.
+- Improve page-specific extraction and add tests for supported shopping sites.
+
+## Troubleshooting
+
+<details>
+<summary><strong>API fails to start</strong></summary>
+
+- Activate the intended virtual environment.
+- Install dependencies with `python -m pip install -r requirements.txt`.
+- Confirm that `app.main:app` is the correct import path.
+- Check startup logs for missing model files, invalid settings, or database errors.
+
+</details>
+
+<details>
+<summary><strong>Fake-review prediction reports missing artifacts</strong></summary>
+
+- Confirm the model bundle or the legacy model files exist at the paths expected by the inference pipeline.
+- If the files are DVC-managed, run `dvc status` and pull the required artifacts from a reachable remote.
+- Rebuild the Docker image if artifacts are copied into the image during build.
+
+</details>
+
+<details>
+<summary><strong>Hugging Face sentiment returns an error</strong></summary>
+
+- Confirm `HF_SENTIMENT_ENABLED=true`.
+- Confirm `HF_TOKEN` is configured in the backend environment and has the required Inference Providers access.
+- Verify the model name and provider availability.
+- Check rate limits and service status. The API should report a controlled error rather than silently changing models.
+
+</details>
+
+<details>
+<summary><strong>Groq summary returns an error</strong></summary>
+
+- Confirm `GROQ_API_KEY` is set on the backend and restart the API after editing `.env`.
+- Verify that `GROQ_MODEL` is currently available to your Groq account.
+- Check request size and configured review/batch limits.
+- Do not expose the API key in logs or frontend variables.
+
+</details>
+
+<details>
+<summary><strong>Extension cannot reach the API</strong></summary>
+
+- Confirm the backend is running at the URL used by the extension.
+- Inspect the browser Network panel and service worker console for the request URL, status code, and safe error details.
+- Check the extension's host permissions and the backend's CORS configuration.
+- Confirm the request path matches the route registered by FastAPI.
+
+</details>
+
+<details>
+<summary><strong>DVC or CI cannot find the dataset</strong></summary>
+
+- Check `dvc status` and the configured remote.
+- A local remote path may not exist on a clean checkout or hosted CI runner.
+- Configure a reachable remote and credentials using secure CI secrets before running hosted training.
+
+</details>
+
+## License
+
+Add the license that applies to this repository and verify that it is compatible with the licenses and terms of the datasets, models, and services used by InsightCart.
