@@ -16,7 +16,6 @@ The project also includes an MLOps workflow for reproducible training, experimen
 - [Architecture](#architecture)
 - [Technology Stack](#technology-stack)
 - [Repository Structure](#repository-structure)
-- [Dataset](#dataset)
 - [Machine Learning Workflow](#machine-learning-workflow)
 - [API Overview](#api-overview)
 - [Configuration](#configuration)
@@ -27,9 +26,6 @@ The project also includes an MLOps workflow for reproducible training, experimen
 - [DVC and MLflow](#dvc-and-mlflow)
 - [Monitoring](#monitoring)
 - [Testing and Code Quality](#testing-and-code-quality)
-- [Security and Data Use](#security-and-data-use)
-- [Limitations and Future Work](#limitations-and-future-work)
-- [Troubleshooting](#troubleshooting)
 
 ## Overview
 
@@ -165,84 +161,117 @@ The final test split is reserved for final reporting and must not be used for mo
 
 The exact files can differ as implementation evolves. The following is the intended high-level organization; retain the paths that exist in your checkout and do not create empty files solely to match this diagram.
 
+## 📁 Project Structure
+
+The following directory structure represents the organization of the InsightCart project, including its FastAPI backend, machine learning pipelines, database integration, monitoring, testing, and Chrome extension.
+
 ```text
 InsightCart/
-├── app/
-│   ├── main.py
-│   ├── routes.py
-│   ├── schemas.py
-│   ├── models.py
-│   └── services.py
-├── artifacts/
-│   ├── models/
-│   ├── reports/
-│   └── plots/
-├── chrome_extension/
-│   ├── manifest.json
-│   ├── popup/
-│   ├── background/
-│   ├── content/
-│   ├── assets/
-│   └── icons/
-├── config/
-│   ├── config.yaml
-│   ├── params.yaml
-│   └── schema.yaml
-├── data/
-│   ├── raw/
-│   ├── processed/
-│   └── external/
-├── docs/
-├── notebooks/
-├── src/
-│   ├── components/
-│   │   ├── data_ingestion.py
-│   │   ├── data_validation.py
-│   │   ├── data_transformation.py
-│   │   ├── model_trainer.py
-│   │   ├── model_evaluation.py
-│   │   └── model_pusher.py
-│   ├── pipeline/
-│   │   ├── review_detection_training_pipeline.py
-│   │   └── review_detection_inference_pipeline.py
-│   ├── utils/
-│   ├── constants.py
-│   ├── exception.py
-│   └── logger.py
-├── tests/
+│
+├── .dvc/                         # DVC configuration and data/model versioning
 ├── .github/
 │   └── workflows/
-├── Dockerfile
-├── docker-compose.yml
-├── dvc.yaml
-├── requirements.txt
-├── setup.py
-├── README.md
-└── .gitignore
+│       ├── ci.yml                # Continuous Integration workflow
+│       └── ml-pipeline.yml       # Automated ML pipeline workflow
+│
+├── app/                          # Main application package
+│   ├── database/                  # Database connection and initialization
+│   │   ├── connection.py          # SQLAlchemy engine and database sessions
+│   │   ├── init_db.py             # Database initialization
+│   │   └── models.py              # SQLAlchemy database models
+│   ├── middleware/                # Custom middleware components
+│   ├── routes/                    # FastAPI API endpoints
+│   │   ├── health.py              # Health-check endpoints
+│   │   ├── review_detection.py    # AI-generated review detection endpoints
+│   │   ├── review_summary.py      # Review summarization endpoints
+│   │   └── sentiment.py           # Sentiment analysis endpoints
+│   ├── schemas/                   # Pydantic request and response schemas
+│   │   ├── request.py             # Request validation schemas
+│   │   ├── response.py            # Response schemas
+│   │   └── review_summary.py      # Review summarization schemas
+│   ├── services/                  # Business logic and service layer
+│   │   ├── review_provider.py     # Review data provider functionality
+│   │   ├── review_service.py      # Review detection services
+│   │   ├── review_summary_service.py # Review summarization logic
+│   │   └── sentiment_service.py   # Sentiment analysis services
+│   ├── config.py                  # Application configuration and environment variables
+│   ├── main.py                    # FastAPI application entry point
+│   ├── metrics.py                 # Application metrics
+│   ├── prometheus.py              # Prometheus integration
+│   └── tracing.py                 # Application tracing and observability
+│
+├── artifacts/
+│   ├── models/                    # Trained model artifacts
+│   ├── experiments/               # Experiment outputs and tracking artifacts
+│   ├── evaluation_results.py      # Model evaluation results
+│   └── production_metrics.py      # Production model performance metrics
+│
+├── chrome_extension/              # Browser extension for review analysis
+│   ├── manifest.json              # Extension configuration
+│   ├── background.js               # Background extension logic
+│   ├── content.js                  # Webpage content integration
+│   ├── popup.css                   # Popup interface styling
+│   ├── popup.html                  # Popup interface structure
+│   └── popup.js                    # Popup functionality
+│
+├── data/
+│   ├── raw/                        # Original datasets
+│   └── processed/                  # Cleaned and transformed datasets
+│
+├── monitoring/
+│   └── prometheus.yaml             # Prometheus monitoring configuration
+│
+├── notebooks/                      # Jupyter notebooks for experimentation
+│   ├── 01_AI_Generated_Review_Detection.ipynb
+│   └── InsightCart_HuggingFace_Sentiment_Analysis.ipynb
+│
+├── scripts/                        # Utility and evaluation scripts
+│   ├── evaluate_hf_sentiment.py    # Hugging Face sentiment model evaluation
+│   └── verify_mlflow_tracing.py    # MLflow tracing verification
+│
+├── docs/                           # Project documentation
+│
+├── src/                            # Machine learning pipeline implementation
+│   ├── components/                 # Individual ML pipeline components
+│   │   ├── data_ingestion.py       # Dataset ingestion
+│   │   ├── data_validation.py      # Data quality validation
+│   │   ├── data_transformation.py  # Feature engineering and preprocessing
+│   │   ├── model_trainer.py        # Model training
+│   │   ├── model_evaluation.py     # Model evaluation
+│   │   └── model_pusher.py         # Model deployment or artifact publishing
+│   ├── evaluation/                 # Model evaluation and quality gates
+│   │   ├── evaluate_models.py      # Model evaluation routines
+│   │   └── model_gate.py           # Model acceptance criteria
+│   ├── pipeline/                   # ML training and inference workflows
+│   │   ├── review_detection_training_pipeline.py
+│   │   └── review_detection_inference_pipeline.py
+│   ├── utils/                      # Shared ML utilities
+│   ├── common.py                   # Common ML functionality
+│   └── preprocessing.py            # Data preprocessing utilities
+│
+├── tests/                          # Automated tests
+│   ├── conftest.py                 # Shared pytest fixtures
+│   ├── test_api.py                 # API tests
+│   ├── test_database_startup.py    # Database startup tests
+│   ├── test_extension_contract.py  # Chrome extension contract tests
+│   ├── test_model_selection.py     # Model selection tests
+│   ├── test_review_summary.py      # Review summarization tests
+│   ├── test_sentiment.py           # Sentiment analysis tests
+│   └── test_tracing.py             # Tracing tests
+│
+├── Dockerfile                      # Docker image build instructions
+├── docker-compose.yml              # Multi-container Docker configuration
+├── requirements.txt                # Python dependencies
+├── .env.example                    # Example environment configuration
+├── .dockerignore                   # Files excluded from Docker builds
+├── .flake8                         # Flake8 linting configuration
+├── dvc.yml                         # DVC pipeline configuration
+├── constants.py                    # Project-wide constants
+├── exception.py                    # Custom exception handling
+├── logger.py                       # Logging configuration
+├── .gitignore                      # Git exclusion rules
+└── README.md                       # Project overview and documentation
 ```
-
-## Dataset
-
-The custom fake-review classifier requires a labeled dataset with review text and a target label distinguishing the classes your model is intended to learn. Depending on the training pipeline, metadata such as rating and category may also be required.
-
-Expected raw dataset path in this project:
-
-```text
-data/raw/fake_reviews_dataset.csv
-```
-
-Confirm the exact column names and label values against `config/schema.yaml` and the data-validation code before training. Do not assume that every public dataset uses the same schema or that a dataset's `fake` label means specifically AI-generated text; some datasets label deceptive or synthetic reviews using different definitions.
-
-Recommended dataset handling:
-
-- Keep the original dataset unchanged in `data/raw/`.
-- Use the validation and transformation pipeline to create processed data.
-- Remove exact duplicates and handle missing required values according to the configured schema.
-- Split the data before fitting feature transformations.
-- Fit TF-IDF, category encoding, and any scaling only on the training partition.
-- Use a stratified split where class distributions permit it.
-- Record the dataset checksum and evaluation metadata.
-- Check the dataset license, permitted uses, and any redistribution restrictions before committing or sharing it.
 
 ## Machine Learning Workflow
 
@@ -428,7 +457,19 @@ Use a Groq model that is currently available to your account. The model name abo
 
 Keep provider credentials on the backend only. Never put `HF_TOKEN` or `GROQ_API_KEY` in frontend variables such as `VITE_*`, return them from an API endpoint, or print them in logs. Restart the backend after editing `.env`.
 
-Database, MLflow, DVC remote, and monitoring settings depend on your current configuration. Check `app/config.py`, `config/`, and `docker-compose.yml` for the actual variable names rather than adding undocumented environment variables.
+Database settings are read from `DATABASE_URL`. To persist summaries in Neon,
+copy the pooled PostgreSQL URL from Neon into the private `.env` file:
+
+```dotenv
+DATABASE_URL="postgresql://USER:PASSWORD@YOUR-HOST.neon.tech/DATABASE?sslmode=require"
+```
+
+Replace the placeholders with the Neon connection details; do not commit or
+share the URL. The backend enables TLS for Neon hosts and creates its tables at
+startup. The current development `.env` must point to Neon or data will remain
+in its configured local database. After changing it, restart the API/container
+and check `GET /api/v1/review-summary/health` for `database_provider: neon` and
+`database_status: connected`.
 
 ## Run Locally
 
@@ -612,88 +653,3 @@ A real sentiment evaluation requires a manually labeled, representative product-
 
 GitHub Actions should validate code with linting, tests, configuration checks, and Docker builds. A hosted training workflow that pulls DVC data also requires a reachable DVC remote and appropriate credentials. CI should not promote a production model automatically unless an explicitly reviewed release process allows it.
 
-## Security and Data Use
-
-- Keep `.env`, access tokens, and API keys out of Git.
-- Never expose provider credentials through the extension or browser-visible frontend code.
-- Do not log raw review text, credentials, or other sensitive payloads.
-- Use review sources and datasets only in ways permitted by their terms and licenses.
-- Tell users when review text is sent to external inference providers.
-- Treat authenticity, sentiment, and recommendation outputs as probabilistic assistance, not verified facts.
-- Restrict local monitoring and MLflow services to trusted development access.
-
-## Limitations and Future Work
-
-Current limitations and possible future improvements include:
-
-- Evaluate the custom classifier on a representative, manually verified dataset and monitor class imbalance and data leakage.
-- Evaluate the Twitter-trained sentiment model on product reviews before making quality claims.
-- Add an authorized review provider if automated product-level review collection is required.
-- Add semantic review search and natural-language review Q&A using embeddings.
-- Improve recommendation and trust-score logic only after defining and validating its inputs and evaluation criteria.
-- Add scheduled retraining and model-drift monitoring after reliable feedback and evaluation data are available.
-- Improve page-specific extraction and add tests for supported shopping sites.
-
-## Troubleshooting
-
-<details>
-<summary><strong>API fails to start</strong></summary>
-
-- Activate the intended virtual environment.
-- Install dependencies with `python -m pip install -r requirements.txt`.
-- Confirm that `app.main:app` is the correct import path.
-- Check startup logs for missing model files, invalid settings, or database errors.
-
-</details>
-
-<details>
-<summary><strong>Fake-review prediction reports missing artifacts</strong></summary>
-
-- Confirm the model bundle or the legacy model files exist at the paths expected by the inference pipeline.
-- If the files are DVC-managed, run `dvc status` and pull the required artifacts from a reachable remote.
-- Rebuild the Docker image if artifacts are copied into the image during build.
-
-</details>
-
-<details>
-<summary><strong>Hugging Face sentiment returns an error</strong></summary>
-
-- Confirm `HF_SENTIMENT_ENABLED=true`.
-- Confirm `HF_TOKEN` is configured in the backend environment and has the required Inference Providers access.
-- Verify the model name and provider availability.
-- Check rate limits and service status. The API should report a controlled error rather than silently changing models.
-
-</details>
-
-<details>
-<summary><strong>Groq summary returns an error</strong></summary>
-
-- Confirm `GROQ_API_KEY` is set on the backend and restart the API after editing `.env`.
-- Verify that `GROQ_MODEL` is currently available to your Groq account.
-- Check request size and configured review/batch limits.
-- Do not expose the API key in logs or frontend variables.
-
-</details>
-
-<details>
-<summary><strong>Extension cannot reach the API</strong></summary>
-
-- Confirm the backend is running at the URL used by the extension.
-- Inspect the browser Network panel and service worker console for the request URL, status code, and safe error details.
-- Check the extension's host permissions and the backend's CORS configuration.
-- Confirm the request path matches the route registered by FastAPI.
-
-</details>
-
-<details>
-<summary><strong>DVC or CI cannot find the dataset</strong></summary>
-
-- Check `dvc status` and the configured remote.
-- A local remote path may not exist on a clean checkout or hosted CI runner.
-- Configure a reachable remote and credentials using secure CI secrets before running hosted training.
-
-</details>
-
-## License
-
-Add the license that applies to this repository and verify that it is compatible with the licenses and terms of the datasets, models, and services used by InsightCart.

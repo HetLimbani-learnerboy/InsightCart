@@ -7,7 +7,7 @@ Purpose :
 Store all FastAPI configuration values using pydantic-settings.
 """
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -23,6 +23,13 @@ class Settings(BaseSettings):
     DEBUG: bool = True
 
     DATABASE_URL: str = "sqlite:///./test.db"
+
+    @field_validator("API_PREFIX", mode="before")
+    @classmethod
+    def normalize_api_prefix(cls, value: str) -> str:
+        """Ensure FastAPI router prefixes always have a valid leading slash."""
+        prefix = str(value or "").strip().strip("/")
+        return f"/{prefix}" if prefix else ""
 
     HF_SENTIMENT_ENABLED: bool = True
     HF_TOKEN: str = ""

@@ -6,10 +6,12 @@ from functools import lru_cache
 from importlib.util import find_spec
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database.connection import get_db
+from app.database.connection import engine
 from app.database.models import ProductReviewSummary
 from app.schemas.review_summary import (
     ProductReviewSummaryResponse,
@@ -147,7 +149,7 @@ def summary_history(
 
 
 @router.get("/health")
-def summary_health():
+def summary_health(db: Session = Depends(get_db)):
     sdk_available = find_spec("groq") is not None
     configured = bool(settings.GROQ_API_KEY)
 
@@ -158,10 +160,30 @@ def summary_health():
     else:
         state = "configured"
 
+    try:
+        db.execute(text("SELECT 1"))
+        database_state = "connected"
+    except Exception as error:
+        logger.warning(
+            "Review summary database health check failed: error_type=%s",
+            type(error).__name__,
+        )
+        database_state = "unavailable"
+
+    if database_state != "connected":
+        state = "degraded"
+
     return {
         "status": state,
         "provider": "groq",
         "model": settings.GROQ_MODEL,
         "sdk_available": sdk_available,
         "api_key_configured": configured,
+        "database_status": database_state,
+        "database_dialect": engine.dialect.name,
+        "database_provider": (
+            "neon"
+            if engine.url.host and engine.url.host.endswith(".neon.tech")
+            else engine.dialect.name
+        ),
     }
