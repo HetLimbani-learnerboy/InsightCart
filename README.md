@@ -457,7 +457,19 @@ Use a Groq model that is currently available to your account. The model name abo
 
 Keep provider credentials on the backend only. Never put `HF_TOKEN` or `GROQ_API_KEY` in frontend variables such as `VITE_*`, return them from an API endpoint, or print them in logs. Restart the backend after editing `.env`.
 
-Database, MLflow, DVC remote, and monitoring settings depend on your current configuration. Check `app/config.py`, `config/`, and `docker-compose.yml` for the actual variable names rather than adding undocumented environment variables.
+Database settings are read from `DATABASE_URL`. To persist summaries in Neon,
+copy the pooled PostgreSQL URL from Neon into the private `.env` file:
+
+```dotenv
+DATABASE_URL="postgresql://USER:PASSWORD@YOUR-HOST.neon.tech/DATABASE?sslmode=require"
+```
+
+Replace the placeholders with the Neon connection details; do not commit or
+share the URL. The backend enables TLS for Neon hosts and creates its tables at
+startup. The current development `.env` must point to Neon or data will remain
+in its configured local database. After changing it, restart the API/container
+and check `GET /api/v1/review-summary/health` for `database_provider: neon` and
+`database_status: connected`.
 
 ## Run Locally
 

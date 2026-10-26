@@ -23,6 +23,11 @@ from app.schemas.review_summary import (
 
 logger = logging.getLogger(__name__)
 
+# Groq documents a separate reasoning_format requirement for GPT-OSS models
+# when JSON mode is enabled. Other models receive only the generally supported
+# JSON Object Mode option.
+GROQ_GPT_OSS_MODELS = {"openai/gpt-oss-20b", "openai/gpt-oss-120b"}
+
 
 class SummaryServiceError(Exception):
     def __init__(self, code: str, message: str, status_code: int = 503):
@@ -145,11 +150,17 @@ class ReviewSummaryService:
             {"role": "system", "content": system},
             {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
         ]
+        request_options = {
+            "model": self.config.GROQ_MODEL,
+            "messages": messages,
+            "temperature": 0,
+            "response_format": {"type": "json_object"},
+        }
+        if self.config.GROQ_MODEL in GROQ_GPT_OSS_MODELS:
+            request_options["reasoning_format"] = "hidden"
         for attempt in range(3):
             try:
-                response = await client.chat.completions.create(
-                    model=self.config.GROQ_MODEL, messages=messages, temperature=0
-                )
+                response = await client.chat.completions.create(**request_options)
                 content = (
                     response.choices[0].message.content if response.choices else None
                 )
@@ -157,6 +168,7 @@ class ReviewSummaryService:
                     raise SummaryServiceError(
                         "empty_model_response",
                         "The summarization model returned an empty response.",
+                        502,
                     )
                 try:
                     result = json.loads(content)
@@ -164,11 +176,13 @@ class ReviewSummaryService:
                     raise SummaryServiceError(
                         "invalid_model_response",
                         "The summarization model returned malformed JSON.",
+                        502,
                     ) from exc
                 if not isinstance(result, dict):
                     raise SummaryServiceError(
                         "invalid_model_response",
                         "The summarization model returned an invalid response.",
+                        502,
                     )
                 return result
             except SummaryServiceError:
@@ -405,4 +419,9 @@ class ReviewSummaryService:
             )
             db.add(row)
             db.commit()
+            logger.info(
+                "Product review summary persisted summary_id=%s reviews_analyzed=%d",
+                row.id,
+                len(reviews),
+            )
         return response
