@@ -38,9 +38,7 @@
 
 console.log("InsightCart: content.js loaded");
 
-// ============================================================
 // GLOBAL CONFIGURATION
-// ============================================================
 
 const INSIGHTCART_CONFIG = {
     MAX_REVIEWS: 100,
@@ -112,11 +110,7 @@ const INSIGHTCART_CONFIG = {
     }
 };
 
-
-// ============================================================
 // UTILITY FUNCTIONS
-// ============================================================
-
 function cleanText(text) {
     if (!text) {
         return "";
@@ -223,9 +217,7 @@ function sanitizeRating(rating) {
 
 
 /*
- * ------------------------------------------------------------
  * sanitizeCategory
- * ------------------------------------------------------------
  * Guarantees category is never an empty string, which would
  * fail the backend's required-field validation.
  */
@@ -334,10 +326,7 @@ function isVerifiedPurchase(text) {
     return /verified purchase/i.test(text);
 }
 
-
-// ============================================================
 // PRODUCT INFORMATION
-// ============================================================
 
 function extractProductName() {
 
@@ -371,10 +360,7 @@ function extractProductName() {
         : "Unknown Product";
 }
 
-
-// ============================================================
 // PRODUCT CATEGORY
-// ============================================================
 
 function extractCategory() {
 
@@ -507,10 +493,7 @@ function normalizeCategory(category) {
     return `${category}_5`;
 }
 
-
-// ============================================================
 // REVIEW TITLE
-// ============================================================
 
 function extractReviewTitle(reviewElement) {
 
@@ -543,10 +526,7 @@ function extractReviewTitle(reviewElement) {
     return title;
 }
 
-
-// ============================================================
 // FULL REVIEW BODY
-// ============================================================
 
 function extractReviewBody(reviewElement) {
 
@@ -627,10 +607,7 @@ function extractReviewBody(reviewElement) {
     return longestText;
 }
 
-
-// ============================================================
 // REVIEWER
-// ============================================================
 
 function extractReviewer(reviewElement) {
 
@@ -640,10 +617,7 @@ function extractReviewer(reviewElement) {
     );
 }
 
-
-// ============================================================
 // REVIEW DATE
-// ============================================================
 
 function extractReviewDate(reviewElement) {
 
@@ -653,10 +627,7 @@ function extractReviewDate(reviewElement) {
     );
 }
 
-
-// ============================================================
 // RATING
-// ============================================================
 
 function extractReviewRating(reviewElement) {
 
@@ -678,10 +649,7 @@ function extractReviewRating(reviewElement) {
     return parseRating(text);
 }
 
-
-// ============================================================
 // VERIFIED PURCHASE
-// ============================================================
 
 function extractVerifiedPurchase(reviewElement) {
 
@@ -693,10 +661,7 @@ function extractVerifiedPurchase(reviewElement) {
     return isVerifiedPurchase(text);
 }
 
-
-// ============================================================
 // HELPFUL VOTES
-// ============================================================
 
 function extractHelpfulVotes(reviewElement) {
 
@@ -708,10 +673,7 @@ function extractHelpfulVotes(reviewElement) {
     return parseHelpfulVotes(text);
 }
 
-
-// ============================================================
 // VALIDATE REVIEW
-// ============================================================
 
 function isValidReview(review) {
 
@@ -750,10 +712,7 @@ function isValidReview(review) {
     return true;
 }
 
-
-// ============================================================
 // EXTRACT SINGLE REVIEW
-// ============================================================
 
 function extractSingleReview(reviewElement, index) {
 
@@ -776,9 +735,7 @@ function extractSingleReview(reviewElement, index) {
             extractHelpfulVotes(reviewElement);
 
         /*
-         * ------------------------------------------------
          * SANITIZATION
-         * ------------------------------------------------
          * These three fields (review, rating, category) are
          * sent straight to the FastAPI backend and must
          * always satisfy its Pydantic schema constraints,
@@ -818,10 +775,7 @@ function extractSingleReview(reviewElement, index) {
     }
 }
 
-
-// ============================================================
 // FIND REVIEW CONTAINERS
-// ============================================================
 
 function findReviewContainers() {
 
@@ -915,10 +869,7 @@ function findReviewContainers() {
     return found;
 }
 
-
-// ============================================================
 // FALLBACK REVIEW SEARCH
-// ============================================================
 
 function fallbackReviewSearch() {
 
@@ -977,10 +928,7 @@ function fallbackReviewSearch() {
     return candidates;
 }
 
-
-// ============================================================
 // DEDUPLICATE REVIEWS
-// ============================================================
 
 function deduplicateReviews(reviews) {
 
@@ -1015,10 +963,7 @@ function deduplicateReviews(reviews) {
     return unique;
 }
 
-
-// ============================================================
 // SCROLL TO REVIEWS SECTION
-// ============================================================
 
 /*
  * Amazon product pages lazy-render the reviews widget. Simply
@@ -1048,10 +993,7 @@ function scrollToReviews() {
     });
 }
 
-
-// ============================================================
 // EXTRACT WITH RETRY
-// ============================================================
 
 /*
  * Retries the container search a few times with a scroll +
@@ -1103,10 +1045,7 @@ async function extractContainersWithRetry() {
     return [];
 }
 
-
-// ============================================================
 // MAIN EXTRACTION
-// ============================================================
 
 async function extractAmazonReviews() {
 
@@ -1131,9 +1070,7 @@ async function extractAmazonReviews() {
     );
 
     /*
-     * --------------------------------------------------------
      * FIND REVIEW CONTAINERS (with scroll + retry)
-     * --------------------------------------------------------
      */
 
     const reviewElements = await extractContainersWithRetry();
@@ -1156,17 +1093,13 @@ async function extractAmazonReviews() {
     );
 
     /*
-     * --------------------------------------------------------
      * DEDUPLICATE
-     * --------------------------------------------------------
      */
 
     reviews = deduplicateReviews(reviews);
 
     /*
-     * --------------------------------------------------------
      * LIMIT
-     * --------------------------------------------------------
      */
 
     reviews = reviews.slice(
@@ -1206,10 +1139,7 @@ async function extractAmazonReviews() {
     return result;
 }
 
-
-// ============================================================
 // MESSAGE LISTENER
-// ============================================================
 
 chrome.runtime.onMessage.addListener(
     (message, sender, sendResponse) => {
@@ -1267,10 +1197,7 @@ chrome.runtime.onMessage.addListener(
     }
 );
 
-
-// ============================================================
 // OPTIONAL: OBSERVE AMAZON DYNAMIC DOM
-// ============================================================
 
 let insightCartObserverTimer = null;
 
@@ -1317,10 +1244,7 @@ try {
     );
 }
 
-
-// ============================================================
 // INITIAL STATUS
-// ============================================================
 
 console.log(
     "InsightCart: Amazon review extraction system ready."

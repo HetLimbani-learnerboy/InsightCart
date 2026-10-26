@@ -1,54 +1,39 @@
-# ============================================================
 # InsightCart - AI Generated Review Detection
-# ============================================================
 
-# -------------------------
+
 # Core Python / Data Science
-# -------------------------
 numpy
 pandas
 scipy
 
-# -------------------------
 # Machine Learning
-# -------------------------
 scikit-learn==1.9.0
 xgboost
 lightgbm
 joblib
 
-# -------------------------
 # NLP & Text Preprocessing
-# -------------------------
 nltk
 contractions
 beautifulsoup4
 emoji
 
-# -------------------------
 # Model Serialization
-# -------------------------
 skops
 
-# -------------------------
 # Local Sentiment Analysis
 # Hugging Face Transformers + PyTorch
 # No HF_TOKEN required for public models
-# -------------------------
 torch
 transformers
 huggingface_hub==0.36.2
 safetensors
 tokenizers
 
-# -------------------------
 # ML Experiment Tracking
-# -------------------------
 mlflow>=3.0,<4
 
-# -------------------------
 # FastAPI Backend
-# -------------------------
 fastapi
 groq
 uvicorn[standard]
@@ -57,57 +42,39 @@ pydantic-settings
 python-multipart
 typing-extensions
 
-# -------------------------
 # Database - PostgreSQL
-# -------------------------
 sqlalchemy
 psycopg[binary]
 psycopg2-binary
 
-# -------------------------
 # Environment Variables
-# -------------------------
 python-dotenv
 
-# -------------------------
 # HTTP / API
-# -------------------------
 requests
 httpx
 
-# -------------------------
 # Testing
-# -------------------------
 pytest
 
-# -------------------------
 # Code Quality
-# -------------------------
 black
 flake8
 
-# -------------------------
 # DVC
-# -------------------------
 dvc
 dvc-s3
 
-# -------------------------
 # Visualization
-# -------------------------
 matplotlib
 seaborn
 
-# -------------------------
 # Jupyter / Notebook
-# -------------------------
 jupyter
 ipykernel
 
-# -------------------------
 # Monitoring
-# -------------------------
 prometheus-client
 
-
+# Optional: Groq for review summarization
 groq
