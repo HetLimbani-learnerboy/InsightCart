@@ -25,7 +25,6 @@ from transformers import (
 
 from app.config import Settings, settings
 
-
 logger = logging.getLogger(__name__)
 
 
