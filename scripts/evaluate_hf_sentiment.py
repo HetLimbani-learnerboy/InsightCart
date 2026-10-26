@@ -50,7 +50,9 @@ async def evaluate(input_path: Path, output_path: Path):
         "sample_count": len(rows),
         "metrics": report,
         "confusion_matrix_labels": LABELS,
-        "confusion_matrix": confusion_matrix(expected, predictions, labels=LABELS).tolist(),
+        "confusion_matrix": confusion_matrix(
+            expected, predictions, labels=LABELS
+        ).tolist(),
         "limitations": "Metrics apply only to this manually labeled sample; confidence is not calibrated correctness.",
     }
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -65,7 +67,9 @@ async def evaluate(input_path: Path, output_path: Path):
             mlflow.log_param("sample_count", len(rows))
             for label in LABELS:
                 for metric in ("precision", "recall", "f1-score"):
-                    mlflow.log_metric(f"{label}_{metric.replace('-', '_')}", report[label][metric])
+                    mlflow.log_metric(
+                        f"{label}_{metric.replace('-', '_')}", report[label][metric]
+                    )
             mlflow.log_metric("accuracy", report["accuracy"])
     return output
 
@@ -73,10 +77,20 @@ async def evaluate(input_path: Path, output_path: Path):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", required=True, type=Path)
-    parser.add_argument("--output", default=Path("artifacts/sentiment-evaluation.json"), type=Path)
+    parser.add_argument(
+        "--output", default=Path("artifacts/sentiment-evaluation.json"), type=Path
+    )
     args = parser.parse_args()
     result = asyncio.run(evaluate(args.input, args.output))
-    print(json.dumps({"output": str(args.output), "sample_count": result["sample_count"], "model": result["model"]}))
+    print(
+        json.dumps(
+            {
+                "output": str(args.output),
+                "sample_count": result["sample_count"],
+                "model": result["model"],
+            }
+        )
+    )
 
 
 if __name__ == "__main__":

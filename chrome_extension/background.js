@@ -24,6 +24,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 let error;
                 if (response.status === 422) error = "Some review details are invalid. Check the product name, review text, and ratings.";
                 else if (response.status === 413) error = "This review set is too large. Remove some reviews and try again.";
+                else if (response.status === 503 && detail?.code === "groq_not_configured") error = "Set GROQ_API_KEY in the backend .env file, then restart the backend.";
+                else if (response.status === 503 && detail?.code === "groq_sdk_missing") error = "The Groq SDK is missing from the backend environment. Install requirements.txt and restart the backend.";
+                else if (response.status === 503 && detail?.code === "groq_auth_failed") error = "Groq rejected the backend credentials. Check or rotate GROQ_API_KEY, then restart the backend.";
+                else if (response.status === 503 && detail?.code === "groq_model_unavailable") error = "The configured Groq model is unavailable. Check GROQ_MODEL in the backend .env file.";
+                else if (response.status === 503 && detail?.code === "groq_request_rejected") error = "Groq rejected the request. Check the configured model and restart the backend.";
+                else if (response.status === 503 && detail?.code === "groq_rate_limited") error = "Groq rate limits were reached. Wait briefly and retry.";
                 else if (response.status === 503) error = "Review summarization is unavailable. Check that the backend and Groq configuration are ready.";
                 else if (response.status === 502) error = "The AI provider could not complete this request. Please retry.";
                 else if (response.status === 500 && detail?.request_id) error = `The backend could not complete the summary (reference ${detail.request_id}). Check the backend log for this reference.`;
