@@ -271,18 +271,80 @@ http://localhost:8000/docs
 
 The current project includes or documents these feature routes. Verify the exact route prefixes in `app/main.py` and the router modules before relying on them.
 
-| Method | Endpoint | Purpose |
+## API Endpoints
+
+InsightCart provides REST API endpoints for health monitoring, fake-review detection, sentiment analysis, AI-powered review summarization, and application monitoring. The backend API can be explored through the Swagger UI.
+
+**Base URL:** `http://localhost:8000`
+
+**Interactive API Documentation:** `http://localhost:8000/docs`
+
+### 1. General Endpoints
+
+| Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/health` | Health check, if registered by the application |
-| `GET` | `/metrics` | Prometheus metrics, if metrics instrumentation is enabled |
-| `POST` | `/api/v1/review/predict/batch` | Batch fake-review predictions used by the extension |
-| `POST` | `/api/v1/sentiment/analyze` | Analyze one review's sentiment |
-| `POST` | `/api/v1/sentiment/analyze/batch` | Analyze a batch of reviews for sentiment |
-| `POST` | `/api/v1/review-summary/summarize` | Summarize reviews supplied in the request |
-| `GET` | `/api/v1/review-summary/health` | Check review-summary service configuration |
-| `POST` | `/api/v1/review-summary/products/{product_id}/analyze` | Product-level analysis requiring a configured review provider |
-| `GET` | `/api/v1/review-summary/products/{product_id}` | Retrieve the current product summary, if available |
-| `GET` | `/api/v1/review-summary/products/{product_id}/history` | Retrieve summary history, if implemented and configured |
+| `GET` | `/` | Returns the application's home or welcome response. |
+| `GET` | `/health` | Checks the overall health of the API service. |
+| `GET` | `/metrics` | Exposes application metrics for Prometheus monitoring. |
+
+### 2. Review Detection
+
+These endpoints detect whether a product review is potentially fake or genuine using the configured review-classification model.
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/v1/review/predict` | Predicts whether a single review is fake or genuine. |
+| `POST` | `/api/v1/review/predict/batch` | Predicts whether multiple reviews are fake or genuine in a single request. |
+
+### 3. Sentiment Analysis
+
+These endpoints analyze the emotional tone of product reviews and classify sentiment using the configured sentiment-analysis service.
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/v1/sentiment/analyze` | Analyzes the sentiment of a single review. |
+| `POST` | `/api/v1/sentiment/analyze/batch` | Analyzes the sentiment of multiple reviews in a single request. |
+
+### 4. AI-Powered Review Summarization
+
+These endpoints summarize customer reviews, identify key topics, highlight advantages and disadvantages, and provide a product-level recommendation.
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/v1/review-summary/summarize` | Generates a summary from reviews supplied in the request. |
+| `POST` | `/api/v1/review-summary/products/{product_id}/analyze` | Collects reviews through a configured review provider and generates a product-level summary. |
+| `GET` | `/api/v1/review-summary/products/{product_id}` | Retrieves the latest available summary for a product. |
+| `GET` | `/api/v1/review-summary/products/{product_id}/history` | Retrieves the available summary history for a product. |
+| `GET` | `/api/v1/review-summary/health` | Checks the health and configuration status of the review-summarization service. |
+
+**Note:** The product-level analysis endpoint requires a configured review provider. If no authorized provider is configured, the endpoint may return a `503 Service Unavailable` response. The availability of a stored summary or summary history depends on the application's database and implementation.
+
+### 5. Monitoring
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/metrics` | Provides application metrics in a format suitable for Prometheus scraping, when metrics instrumentation is enabled. |
+
+### 6. HTTP Methods
+
+| Method | Purpose |
+|---|---|
+| `GET` | Retrieves information or checks service status. |
+| `POST` | Submits data for prediction, analysis, or summarization. |
+
+### 7. Accessing the API
+
+To run the API locally, start the backend server and open the following URLs:
+
+| Resource | URL | Purpose |
+|---|---|---|
+| API Base URL | `http://localhost:8000` | Root address of the backend API. |
+| Swagger UI | `http://localhost:8000/docs` | Interactive documentation for exploring and testing endpoints. |
+| ReDoc | `http://localhost:8000/redoc` | Alternative API documentation interface, if enabled. |
+| Health Check | `http://localhost:8000/health` | Checks the overall API health. |
+| Prometheus Metrics | `http://localhost:8000/metrics` | Displays application metrics, if enabled. |
+
+**Important:** These URLs assume the backend is running locally on port `8000`. When running through Docker or deploying to another environment, use the corresponding host and port.
 
 The review-summary product collection route depends on a configured, authorized provider. Without one, it should return `503 review_provider_not_configured`. The supplied-review summarization route can be used independently by sending reviews in the request body.
 
