@@ -27,9 +27,21 @@ class Settings(BaseSettings):
     @field_validator("API_PREFIX", mode="before")
     @classmethod
     def normalize_api_prefix(cls, value: str) -> str:
-        """Ensure FastAPI router prefixes always have a valid leading slash."""
-        prefix = str(value or "").strip().strip("/")
-        return f"/{prefix}" if prefix else ""
+        """Normalize the API prefix and remove accidental quotation marks."""
+        prefix = str(value or "").strip()
+
+        # Remove accidental surrounding quotation marks.
+        prefix = prefix.strip('"').strip("'").strip()
+
+        # Remove leading and trailing slashes.
+        prefix = prefix.strip("/")
+
+        # Use the default prefix if the value is empty.
+        if not prefix:
+            return "/api/v1"
+
+        # Ensure the prefix starts with exactly one slash.
+        return f"/{prefix}"
 
     HF_SENTIMENT_ENABLED: bool = True
     HF_TOKEN: str = ""

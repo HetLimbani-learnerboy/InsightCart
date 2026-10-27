@@ -18,7 +18,6 @@ The project also includes an MLOps workflow for reproducible training, experimen
 - [Repository Structure](#repository-structure)
 - [Machine Learning Workflow](#machine-learning-workflow)
 - [API Overview](#api-overview)
-- [Configuration](#configuration)
 - [Run Locally](#run-locally)
 - [Run with Docker Compose](#run-with-docker-compose)
 - [Chrome Extension Setup](#chrome-extension-setup)
@@ -26,6 +25,7 @@ The project also includes an MLOps workflow for reproducible training, experimen
 - [DVC and MLflow](#dvc-and-mlflow)
 - [Monitoring](#monitoring)
 - [Testing and Code Quality](#testing-and-code-quality)
+- [Extension Walkthrough & Screenshots](#extension-walkthrough--screenshots)
 
 ## Overview
 
@@ -246,8 +246,8 @@ InsightCart/
 │   │   ├── review_detection_training_pipeline.py
 │   │   └── review_detection_inference_pipeline.py
 │   ├── utils/                      # Shared ML utilities
-│   ├── common.py                   # Common ML functionality
-│   └── preprocessing.py            # Data preprocessing utilities
+│   │   └── common.py                   # Common ML functionality
+│   │   └──  preprocessing.py            # Data preprocessing utilities
 │
 ├── tests/                          # Automated tests
 │   ├── conftest.py                 # Shared pytest fixtures
@@ -432,45 +432,6 @@ curl -X POST http://localhost:8000/api/v1/review-summary/summarize \
 
 Only send reviews that you are authorized to process. Evidence references in the response can only point to review IDs included in the submitted data and supported by the service's validation rules.
 
-## Configuration
-
-Create a local `.env` file in the repository root. Do not commit it.
-
-Example settings for the external AI providers:
-
-```dotenv
-HF_SENTIMENT_ENABLED=true
-HF_TOKEN=your_hugging_face_user_access_token
-HF_SENTIMENT_MODEL=cardiffnlp/twitter-roberta-base-sentiment-latest
-HF_SENTIMENT_TIMEOUT=30
-HF_SENTIMENT_MAX_LENGTH=512
-
-GROQ_API_KEY=your_groq_api_key
-GROQ_MODEL=openai/gpt-oss-120b
-GROQ_TIMEOUT=60
-REVIEW_SUMMARY_MAX_REVIEWS=1000
-REVIEW_SUMMARY_BATCH_TOKENS=6000
-REVIEW_SUMMARY_CACHE_TTL_HOURS=24
-```
-
-Use a Groq model that is currently available to your account. The model name above reflects a model that worked in the described development setup; model availability can change. If a provider rejects a model name, check the provider's current model list and update `GROQ_MODEL`.
-
-Keep provider credentials on the backend only. Never put `HF_TOKEN` or `GROQ_API_KEY` in frontend variables such as `VITE_*`, return them from an API endpoint, or print them in logs. Restart the backend after editing `.env`.
-
-Database settings are read from `DATABASE_URL`. To persist summaries in Neon,
-copy the pooled PostgreSQL URL from Neon into the private `.env` file:
-
-```dotenv
-DATABASE_URL="postgresql://USER:PASSWORD@YOUR-HOST.neon.tech/DATABASE?sslmode=require"
-```
-
-Replace the placeholders with the Neon connection details; do not commit or
-share the URL. The backend enables TLS for Neon hosts and creates its tables at
-startup. The current development `.env` must point to Neon or data will remain
-in its configured local database. After changing it, restart the API/container
-and check `GET /api/v1/review-summary/health` for `database_provider: neon` and
-`database_status: connected`.
-
 ## Run Locally
 
 Run commands from the repository root.
@@ -652,4 +613,35 @@ Some repositories may not contain every directory shown in the lint command; adj
 A real sentiment evaluation requires a manually labeled, representative product-review dataset. For a three-class evaluation, use labels `positive`, `neutral`, and `negative` and report per-class precision, recall, F1, overall accuracy, and a confusion matrix. Do not claim product-review performance until the evaluation has actually been run.
 
 GitHub Actions should validate code with linting, tests, configuration checks, and Docker builds. A hosted training workflow that pulls DVC data also requires a reachable DVC remote and appropriate credentials. CI should not promote a production model automatically unless an explicitly reviewed release process allows it.
+
+## Extension Walkthrough & Screenshots
+
+### 1. Extraction & Authenticity Overview
+Real-time Amazon review scraping, AI vs. Human count detection, and sentiment breakdown.
+![Review Extraction and Overview](screenshots/step1.png)
+
+---
+
+### 2. AI-Generated Executive Summary
+High-level product overview generated via LLM, including pros, cons, and metadata chips.
+![AI Summary and Metadata](screenshots/step2.png)
+
+---
+
+### 3. Key Pros, Cons & Topic Breakdown
+Aspect-based extraction categorizing feedback across display, performance, battery, S-Pen, and charging speed.
+![Key Pros, Cons, and Topics](screenshots/step3.png)
+
+---
+
+### 4. Buying Insight & Review-Level Detection
+Actionable buying guidance alongside per-review authenticity predictions and sentiment confidence scores.
+![Buying Insight and Single Review Card](screenshots/step4.png)
+
+---
+
+### 5. Detailed Review Breakdown
+Expandable review cards showing full original text, classification reasoning, and sentiment analysis.
+![Expanded Review Details](screenshots/step5.png)
+
 
